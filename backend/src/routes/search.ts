@@ -51,7 +51,7 @@ export const searchRoutes = (shoukaku: Shoukaku | null): Router => {
         isrc: track.info?.isrc || '',
         encoded: track.encoded
       };
-      console.log('Mapped track:', { title: mappedTrack.title, hasEncoded: !!mappedTrack.encoded, encodedLength: mappedTrack.encoded?.length });
+      console.log('Mapped track:', { title: mappedTrack.title, hasArtwork: !!mappedTrack.artworkUrl });
       return mappedTrack;
       });
 

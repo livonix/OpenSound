@@ -71,3 +71,26 @@ export const getAudioStream = async (encodedTrack: string): Promise<any> => {
   const response = await api.get(`/player/stream/${encodedTrack}`);
   return response.data;
 };
+
+export const skipTrack = async (currentTrack: Track, skipPosition?: number, userId = 'default'): Promise<any> => {
+  const response = await api.post('/player/skip', {
+    guildId: 'web-player',
+    userId,
+    currentTrack,
+    skipPosition
+  });
+  return response.data;
+};
+
+export const trackSearch = async (query: string, userId = 'default'): Promise<any> => {
+  const response = await api.post('/player/track-search', {
+    userId,
+    query
+  });
+  return response.data;
+};
+
+export const getUserStats = async (userId = 'default'): Promise<any> => {
+  const response = await api.get(`/player/stats/${userId}`);
+  return response.data;
+};

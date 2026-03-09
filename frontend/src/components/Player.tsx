@@ -23,7 +23,8 @@ export const Player: React.FC = () => {
     duration,
     togglePlayPause,
     setVolumeLevel,
-    seek
+    seek,
+    skip
   } = usePlayer();
 
   const formatTime = (milliseconds: number): string => {
@@ -92,7 +93,11 @@ export const Player: React.FC = () => {
                 <Play size={20} fill="black" />
               )}
             </button>
-            <button className="text-gray-300 hover:text-white transition-colors">
+            <button 
+              onClick={skip}
+              className="text-gray-300 hover:text-white transition-colors"
+              title="Skip to next recommendation"
+            >
               <SkipForward size={20} />
             </button>
             <button className="text-gray-300 hover:text-white transition-colors">

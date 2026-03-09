@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { PlayerState, Track } from '../types/music';
-import { playTrack, pauseTrack, stopTrack, setVolume, seekTrack } from '../services/api';
+import { playTrack, pauseTrack, stopTrack, setVolume, seekTrack, skipTrack, trackSearch } from '../services/api';
 
 interface PlayerContextType {
   playerState: PlayerState;
@@ -15,6 +15,8 @@ interface PlayerContextType {
   setVolumeLevel: (volume: number) => Promise<void>;
   seek: (position: number) => Promise<void>;
   togglePlayPause: () => Promise<void>;
+  skip: () => Promise<void>;
+  trackUserSearch: (query: string) => Promise<void>;
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
@@ -258,6 +260,42 @@ export const PlayerProvider: React.FC<PlayerProviderProps> = ({ children }) => {
     }
   };
 
+  const skip = async () => {
+    try {
+      if (!currentTrack) return;
+      
+      console.log('⏭️ Skipping track:', currentTrack.title);
+      
+      // Get current position for learning
+      const currentPosition = playerState.position;
+      
+      // Call skip API with recommendation
+      const result = await skipTrack(currentTrack, currentPosition);
+      
+      if (result.success && result.recommendation) {
+        console.log('🎵 Playing recommended track:', result.recommendation.title);
+        
+        // Play the recommended track
+        await play(result.recommendation);
+      } else {
+        console.log('❌ No recommendation available');
+        // Stop current track as fallback
+        await stop();
+      }
+    } catch (error) {
+      console.error('Error skipping track:', error);
+    }
+  };
+
+  const trackUserSearch = async (query: string) => {
+    try {
+      await trackSearch(query);
+      console.log('🔍 Search tracked for recommendations:', query);
+    } catch (error) {
+      console.error('Error tracking search:', error);
+    }
+  };
+
   const value = {
     playerState,
     currentTrack,
@@ -271,6 +309,8 @@ export const PlayerProvider: React.FC<PlayerProviderProps> = ({ children }) => {
     setVolumeLevel,
     seek,
     togglePlayPause,
+    skip,
+    trackUserSearch,
   };
 
   return (

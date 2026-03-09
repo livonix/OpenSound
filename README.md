@@ -160,4 +160,3 @@ MIT License - Voir le fichier LICENSE pour plus de détails.
 - Shoukaku pour le client Node.js
 - React et Tailwind CSS pour le frontend
 - Spotify pour l'inspiration du design
-db7f761161c1484e4accee3a7f6d1ef3

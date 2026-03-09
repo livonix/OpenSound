@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { SearchResult, Track } from '../types/music';
 import { searchTracks } from '../services/api';
+import { usePlayer } from './PlayerContext';
 
 interface SearchContextType {
   searchQuery: string;
@@ -31,6 +32,7 @@ export const SearchProvider: React.FC<SearchProviderProps> = ({ children }) => {
   const [searchResults, setSearchResults] = useState<SearchResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { trackUserSearch } = usePlayer();
 
   const performSearch = async (query: string, source = 'ytsearch') => {
     if (!query.trim()) return;
@@ -42,6 +44,9 @@ export const SearchProvider: React.FC<SearchProviderProps> = ({ children }) => {
     try {
       const results = await searchTracks(query, source);
       setSearchResults(results);
+      
+      // Track search for better recommendations
+      await trackUserSearch(query);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue lors de la recherche');
       setSearchResults(null);
