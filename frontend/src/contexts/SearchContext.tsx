@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { SearchResult, Track } from '../types/music';
+import { SearchResult } from '../types/music';
 import { searchTracks } from '../services/api';
 import { usePlayer } from './PlayerContext';
 

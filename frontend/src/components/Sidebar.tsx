@@ -1,18 +1,21 @@
-import React from 'react';
-import { Home, Search, Library, Plus, Heart, Download } from 'lucide-react';
+import React, { useState } from 'react';
+import { Home, Search, Library, Settings, Plus, Heart, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { CreatePlaylistModal } from './CreatePlaylistModal';
 
 export const Sidebar: React.FC = () => {
   const navigate = useNavigate();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const menuItems = [
     { icon: Home, label: 'Accueil', path: '/' },
     { icon: Search, label: 'Rechercher', path: '/search' },
     { icon: Library, label: 'Bibliothèque', path: '/library' },
+    { icon: Settings, label: 'Paramètres', path: '/settings' },
   ];
 
   const libraryItems = [
-    { icon: Plus, label: 'Créer une playlist' },
+    { icon: Plus, label: 'Créer une playlist', action: () => setIsModalOpen(true) },
     { icon: Heart, label: 'Titres likés' },
     { icon: Download, label: 'Épisodes téléchargés' },
   ];
@@ -57,7 +60,10 @@ export const Sidebar: React.FC = () => {
             const Icon = item.icon;
             return (
               <li key={index}>
-                <div className="sidebar-item">
+                <div 
+                  className="sidebar-item"
+                  onClick={item.action}
+                >
                   <Icon size={20} />
                   <span className="text-sm">{item.label}</span>
                 </div>
@@ -78,6 +84,11 @@ export const Sidebar: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <CreatePlaylistModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+      />
     </div>
   );
 };

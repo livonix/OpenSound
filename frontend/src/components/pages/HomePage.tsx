@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Shuffle, SkipBack, SkipForward, Repeat } from 'lucide-react';
+import { Play, SkipBack, SkipForward } from 'lucide-react';
 import { usePlayer } from '../../contexts/PlayerContext';
 
 export const HomePage: React.FC = () => {

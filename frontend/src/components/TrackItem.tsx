@@ -5,7 +5,6 @@ import { Track } from '../types/music';
 interface TrackItemProps {
   track: Track;
   onPlay: (track: Track) => void;
-  showAlbum?: boolean;
   showArtist?: boolean;
   showDuration?: boolean;
 }
@@ -13,7 +12,6 @@ interface TrackItemProps {
 export const TrackItem: React.FC<TrackItemProps> = ({
   track,
   onPlay,
-  showAlbum = false,
   showArtist = true,
   showDuration = true,
 }) => {
@@ -39,12 +37,6 @@ export const TrackItem: React.FC<TrackItemProps> = ({
           <p className="text-sm text-gray-300 truncate">{track.author}</p>
         )}
       </div>
-
-      {showAlbum && (
-        <div className="hidden md:block flex-1 min-w-0">
-          <p className="text-sm text-gray-300 truncate">Album inconnu</p>
-        </div>
-      )}
 
       {showDuration && (
         <div className="flex items-center space-x-4">

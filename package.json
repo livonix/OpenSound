@@ -1,20 +1,74 @@
 {
-  "name": "opensound-web",
+  "name": "opensound-desktop",
   "version": "1.0.0",
-  "description": "Spotify-like web application with Lavalink integration",
-  "main": "index.js",
+  "description": "OpenSound Desktop Application",
+  "main": "electron/main.js",
+  "homepage": "./",
+  "author": "OpenSound Team",
+  "license": "MIT",
+  "private": true,
   "scripts": {
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "electron": "electron .",
+    "dev": "npm run electron-dev",
+    "electron-dev": "concurrently \"npm run dev:backend\" \"wait-on http://localhost:3001 && electron .\"",
+    "electron-build": "npm run build && electron-builder",
+    "build": "cd frontend && npm run build",
+    "build-win": "electron-builder --win",
+    "build-all": "electron-builder --win --x64 --ia32",
+    "publish": "electron-builder --win --publish=always",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
-    "build": "cd frontend && npm run build",
-    "start": "cd backend && npm start",
-    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+    "dev:web": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "start": "cd backend && npm start"
   },
-  "keywords": ["music", "streaming", "lavalink", "spotify", "typescript"],
-  "author": "youtsuho",
-  "license": "MIT",
+  "build": {
+    "appId": "com.opensound.desktop",
+    "productName": "OpenSound",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "electron/**/*",
+      "frontend/dist/**/*",
+      "backend/dist/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64", "ia32"]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "OpenSound",
+      "include": "electron/installer.nsh"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "your-username",
+      "repo": "OpenSound",
+      "private": false,
+      "releaseType": "release"
+    }
+  },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "electron": "^27.0.0",
+    "electron-builder": "^24.6.4",
+    "concurrently": "^8.2.2",
+    "wait-on": "^7.0.1"
+  },
+  "dependencies": {
+    "electron-updater": "^6.1.4",
+    "axios": "^1.6.0"
   }
 }

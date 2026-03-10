@@ -1,7 +1,10 @@
 import React from 'react';
 import { Clock, Download } from 'lucide-react';
+import { usePlaylist } from '../../contexts/PlaylistContext';
 
 export const LibraryPage: React.FC = () => {
+  const { playlists } = usePlaylist();
+
   const recentTracks = [
     {
       id: 1,
@@ -26,27 +29,6 @@ export const LibraryPage: React.FC = () => {
       album: 'Hotel California',
       duration: '6:30',
       image: 'https://via.placeholder.com/48/1DB954/FFFFFF?text=♪'
-    },
-  ];
-
-  const playlists = [
-    {
-      id: 1,
-      name: 'Ma Playlist 1',
-      tracks: 25,
-      image: 'https://via.placeholder.com/300/E8115B/FFFFFF?text=Playlist+1'
-    },
-    {
-      id: 2,
-      name: 'Ma Playlist 2',
-      tracks: 42,
-      image: 'https://via.placeholder.com/300/1E3264/FFFFFF?text=Playlist+2'
-    },
-    {
-      id: 3,
-      name: 'Ma Playlist 3',
-      tracks: 18,
-      image: 'https://via.placeholder.com/300/1DB954/FFFFFF?text=Playlist+3'
     },
   ];
 
@@ -75,7 +57,7 @@ export const LibraryPage: React.FC = () => {
             >
               <div className="mb-4 relative">
                 <img
-                  src={playlist.image}
+                  src={playlist.image || playlist.coverImage || 'https://via.placeholder.com/300/1DB954/FFFFFF?text=Playlist'}
                   alt={playlist.name}
                   className="w-full aspect-square rounded-lg shadow-lg"
                 />
@@ -86,7 +68,7 @@ export const LibraryPage: React.FC = () => {
                 </button>
               </div>
               <h3 className="font-semibold text-white mb-1">{playlist.name}</h3>
-              <p className="text-sm text-gray-300">{playlist.tracks} titres</p>
+              <p className="text-sm text-gray-300">{playlist.tracks?.length || 0} titres</p>
             </div>
           ))}
         </div>

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { PlayerState, Track } from '../types/music';
-import { playTrack, pauseTrack, stopTrack, setVolume, seekTrack, skipTrack, trackSearch } from '../services/api';
+import { playTrack, pauseTrack, stopTrack, setVolume, seekTrack, skipTrack, trackSearch, getAudioStream } from '../services/api';
 
 interface PlayerContextType {
   playerState: PlayerState;
@@ -89,21 +89,35 @@ export const PlayerProvider: React.FC<PlayerProviderProps> = ({ children }) => {
       setPlayerState(prev => ({ ...prev, isPlaying: true, isPaused: false, position: 0 }));
       
       try {
-        console.log('🔄 Starting direct audio streaming...');
+        console.log('🔄 Starting audio streaming...');
         
         if (audioRef.current) {
-          // Set the audio source directly to proxy endpoint for streaming
-          const proxyStreamUrl = `http://localhost:3001/api/player/audio-proxy/${track.encoded}`;
-          console.log('🔗 Using direct proxy stream URL:', proxyStreamUrl);
+          // Check if we're in Electron mode
+          const isElectron = (window as any).config?.IS_ELECTRON || false;
           
-          audioRef.current.src = proxyStreamUrl;
-          audioRef.current.preload = 'auto'; // Enable preloading
+          let streamUrl: string;
+          
+          if (isElectron) {
+            // Mode Electron : utiliser Lavalink directement
+            console.log('🎧 Using Lavalink direct streaming (Electron mode)');
+            const streamData = await getAudioStream(track.encoded);
+            streamUrl = streamData.streamUrl;
+          } else {
+            // Mode Web : utiliser le proxy du backend
+            console.log('🌐 Using backend proxy (Web mode)');
+            streamUrl = `http://localhost:3001/api/player/audio-proxy/${track.encoded}`;
+          }
+          
+          console.log('🔗 Using stream URL:', streamUrl);
+          
+          audioRef.current.src = streamUrl;
+          audioRef.current.preload = 'auto';
           audioRef.current.volume = playerState.volume / 100;
           audioRef.current.crossOrigin = 'anonymous';
           
           try {
             await audioRef.current.play();
-            console.log('✅ Direct audio streaming started!');
+            console.log('✅ Audio streaming started!');
             
             // Start real progress tracking
             const timeUpdateHandler = () => {
@@ -134,8 +148,10 @@ export const PlayerProvider: React.FC<PlayerProviderProps> = ({ children }) => {
         fallbackToSimulation(track);
       }
       
-      // Also call backend for state management
-      await playTrack(track.encoded);
+      // Also call backend for state management (only in web mode)
+      if (!(window as any).config?.IS_ELECTRON) {
+        await playTrack(track.encoded);
+      }
       
     } catch (error) {
       console.error('Error playing track:', error);
@@ -164,7 +180,7 @@ export const PlayerProvider: React.FC<PlayerProviderProps> = ({ children }) => {
     (window as any).currentProgressInterval = progressInterval;
     
     console.log(`🎵 Now playing: ${track.title}`);
-    console.log('📺 YouTube video:', track.uri);
+    console.log('📺 Stream URL:', track.uri);
     console.log('💡 Audio stream unavailable - using simulated timing');
   };
 
@@ -179,7 +195,12 @@ export const PlayerProvider: React.FC<PlayerProviderProps> = ({ children }) => {
       if (audioRef.current) {
         audioRef.current.pause();
       }
-      await pauseTrack();
+      
+      // Only call backend in web mode
+      if (!(window as any).config?.IS_ELECTRON) {
+        await pauseTrack();
+      }
+      
       setPlayerState(prev => ({ ...prev, isPaused: true }));
       console.log('⏸️ Track paused');
     } catch (error) {
@@ -199,7 +220,12 @@ export const PlayerProvider: React.FC<PlayerProviderProps> = ({ children }) => {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
       }
-      await stopTrack();
+      
+      // Only call backend in web mode
+      if (!(window as any).config?.IS_ELECTRON) {
+        await stopTrack();
+      }
+      
       setCurrentTrack(null);
       setPlayerState(prev => ({ ...prev, isPlaying: false, isPaused: false, position: 0 }));
       console.log('⏹️ Track stopped');
@@ -213,7 +239,12 @@ export const PlayerProvider: React.FC<PlayerProviderProps> = ({ children }) => {
       if (audioRef.current) {
         audioRef.current.volume = volume / 100;
       }
-      await setVolume(volume);
+      
+      // Only call backend in web mode
+      if (!(window as any).config?.IS_ELECTRON) {
+        await setVolume(volume);
+      }
+      
       setPlayerState(prev => ({ ...prev, volume }));
     } catch (error) {
       console.error('Error setting volume:', error);
@@ -225,7 +256,12 @@ export const PlayerProvider: React.FC<PlayerProviderProps> = ({ children }) => {
       if (audioRef.current) {
         audioRef.current.currentTime = position / 1000;
       }
-      await seekTrack(position);
+      
+      // Only call backend in web mode
+      if (!(window as any).config?.IS_ELECTRON) {
+        await seekTrack(position);
+      }
+      
       setPlayerState(prev => ({ ...prev, position }));
     } catch (error) {
       console.error('Error seeking track:', error);
@@ -269,17 +305,22 @@ export const PlayerProvider: React.FC<PlayerProviderProps> = ({ children }) => {
       // Get current position for learning
       const currentPosition = playerState.position;
       
-      // Call skip API with recommendation
-      const result = await skipTrack(currentTrack, currentPosition);
-      
-      if (result.success && result.recommendation) {
-        console.log('🎵 Playing recommended track:', result.recommendation.title);
+      // Call skip API with recommendation (only in web mode for now)
+      if (!(window as any).config?.IS_ELECTRON) {
+        const result = await skipTrack(currentTrack, currentPosition);
         
-        // Play the recommended track
-        await play(result.recommendation);
+        if (result.success && result.recommendation) {
+          console.log('🎵 Playing recommended track:', result.recommendation.title);
+          
+          // Play the recommended track
+          await play(result.recommendation);
+        } else {
+          console.log('❌ No recommendation available');
+          // Stop current track as fallback
+          await stop();
+        }
       } else {
-        console.log('❌ No recommendation available');
-        // Stop current track as fallback
+        console.log('⏭️ Skip not implemented in Electron mode yet');
         await stop();
       }
     } catch (error) {
@@ -289,7 +330,10 @@ export const PlayerProvider: React.FC<PlayerProviderProps> = ({ children }) => {
 
   const trackUserSearch = async (query: string) => {
     try {
-      await trackSearch(query);
+      // Only track search in web mode
+      if (!(window as any).config?.IS_ELECTRON) {
+        await trackSearch(query);
+      }
       console.log('🔍 Search tracked for recommendations:', query);
     } catch (error) {
       console.error('Error tracking search:', error);

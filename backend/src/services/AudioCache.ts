@@ -69,6 +69,49 @@ export class AudioCache {
       console.error('Cache cleanup error:', error);
     }
   }
+
+  // Obtenir les statistiques du cache
+  getCacheStats(): { size: string; count: number } {
+    try {
+      const files = fs.readdirSync(this.cacheDir);
+      let totalSize = 0;
+      
+      files.forEach(file => {
+        const filePath = path.join(this.cacheDir, file);
+        const stats = fs.statSync(filePath);
+        totalSize += stats.size;
+      });
+      
+      // Formater la taille en MB
+      const sizeInMB = (totalSize / (1024 * 1024)).toFixed(2);
+      
+      return {
+        size: `${sizeInMB} MB`,
+        count: files.length
+      };
+    } catch (error) {
+      console.error('Cache stats error:', error);
+      return { size: '0 MB', count: 0 };
+    }
+  }
+
+  // Vider complètement le cache
+  clearCache(): void {
+    try {
+      const files = fs.readdirSync(this.cacheDir);
+      
+      files.forEach(file => {
+        const filePath = path.join(this.cacheDir, file);
+        fs.unlinkSync(filePath);
+        console.log(`🗑️ Deleted cache file: ${file}`);
+      });
+      
+      console.log(`✅ Cleared ${files.length} cache files`);
+    } catch (error) {
+      console.error('Clear cache error:', error);
+      throw error;
+    }
+  }
 }
 
 export const audioCache = new AudioCache();

@@ -291,5 +291,28 @@ export const playerRoutes = (playerManager: PlayerManager): Router => {
     }
   });
 
+  // Get cache information
+  router.get('/cache-info', (req, res) => {
+    try {
+      const cacheStats = audioCache.getCacheStats();
+      res.json(cacheStats);
+    } catch (error) {
+      console.error('Cache info error:', error);
+      res.status(500).json({ error: 'Failed to get cache info' });
+    }
+  });
+
+  // Clear all cached audio files
+  router.post('/clear-cache', (req, res) => {
+    try {
+      audioCache.clearCache();
+      console.log('🗑️ Audio cache cleared by user');
+      res.json({ success: true, message: 'Cache cleared successfully' });
+    } catch (error) {
+      console.error('Clear cache error:', error);
+      res.status(500).json({ error: 'Failed to clear cache' });
+    }
+  });
+
   return router;
 };

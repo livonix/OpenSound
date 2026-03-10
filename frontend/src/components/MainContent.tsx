@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import { HomePage } from './pages/HomePage';
 import { SearchPage } from './pages/SearchPage';
 import { LibraryPage } from './pages/LibraryPage';
+import { SettingsPage } from './pages/SettingsPage';
 
 export const MainContent: React.FC = () => {
   return (
@@ -11,6 +12,7 @@ export const MainContent: React.FC = () => {
         <Route path="/" element={<HomePage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/library" element={<LibraryPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
       </Routes>
     </main>
   );

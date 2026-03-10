@@ -59,7 +59,6 @@ export const SearchPage: React.FC = () => {
                 key={`${track.identifier}-${index}`}
                 track={track}
                 onPlay={handlePlayTrack}
-                showAlbum={true}
                 showArtist={true}
                 showDuration={true}
               />
