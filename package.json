@@ -1,74 +1,66 @@
 {
-  "name": "opensound-desktop",
+  "name": "opensound",
   "version": "1.0.0",
-  "description": "OpenSound Desktop Application",
-  "main": "electron/main.js",
+  "description": "Desktop music streaming app with Spotify metadata and YouTube audio",
+  "main": "dist/main/index.js",
+  "type": "module",
   "homepage": "./",
+  "scripts": {
+    "start": "npm run dev",
+    "dev": "concurrently \"npm run dev:renderer\" \"npm run dev:main\"",
+    "dev:renderer": "cd src/renderer && npm run dev",
+    "dev:main": "tsc -p src/main/tsconfig.json && tsc -p src/main/preload-tsconfig.json && electron dist/main/index.js",
+    "build": "npm run build:renderer && npm run build:main",
+    "build:renderer": "cd src/renderer && npm run build",
+    "build:main": "tsc -p src/main/tsconfig.json && tsc -p src/main/preload-tsconfig.json",
+    "pack": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder",
+    "postinstall": "cd src/renderer && npm install"
+  },
+  "keywords": [
+    "music",
+    "streaming",
+    "electron",
+    "spotify",
+    "youtube"
+  ],
   "author": "OpenSound Team",
   "license": "MIT",
-  "private": true,
-  "scripts": {
-    "electron": "electron .",
-    "dev": "npm run electron-dev",
-    "electron-dev": "concurrently \"npm run dev:backend\" \"wait-on http://localhost:3001 && electron .\"",
-    "electron-build": "npm run build && electron-builder",
-    "build": "cd frontend && npm run build",
-    "build-win": "electron-builder --win",
-    "build-all": "electron-builder --win --x64 --ia32",
-    "publish": "electron-builder --win --publish=always",
-    "dev:backend": "cd backend && npm run dev",
-    "dev:frontend": "cd frontend && npm run dev",
-    "dev:web": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
-    "start": "cd backend && npm start"
-  },
-  "build": {
-    "appId": "com.opensound.desktop",
-    "productName": "OpenSound",
-    "directories": {
-      "output": "dist-electron"
-    },
-    "files": [
-      "electron/**/*",
-      "frontend/dist/**/*",
-      "backend/dist/**/*",
-      "node_modules/**/*",
-      "package.json"
-    ],
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": ["x64", "ia32"]
-        }
-      ],
-      "icon": "assets/icon.ico",
-      "requestedExecutionLevel": "asInvoker"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "OpenSound",
-      "include": "electron/installer.nsh"
-    },
-    "publish": {
-      "provider": "github",
-      "owner": "your-username",
-      "repo": "OpenSound",
-      "private": false,
-      "releaseType": "release"
-    }
-  },
   "devDependencies": {
-    "electron": "^27.0.0",
-    "electron-builder": "^24.6.4",
-    "concurrently": "^8.2.2",
-    "wait-on": "^7.0.1"
+    "@types/node": "^20.0.0",
+    "@types/uuid": "^9.0.0",
+    "concurrently": "^8.2.0",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.6.0",
+    "typescript": "^5.0.0",
+    "wait-on": "^7.0.0"
   },
   "dependencies": {
-    "electron-updater": "^6.1.4",
-    "axios": "^1.6.0"
+    "axios": "^1.6.0",
+    "dotenv": "^17.3.1",
+    "fluent-ffmpeg": "^2.1.3",
+    "sqlite3": "^5.1.0",
+    "uuid": "^9.0.0"
+  },
+  "build": {
+    "appId": "com.opensound.app",
+    "productName": "OpenSound",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "assets/**/*",
+      "node_modules/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.music"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
   }
 }

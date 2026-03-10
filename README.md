@@ -1,208 +1,206 @@
-# OpenSound - Application Desktop Electron
+# OpenSound
 
-Une application desktop de streaming musical open source avec interface type Spotify, utilisant Lavalink pour la recherche et la lecture de musique. Disponible en version Windows avec système de mise à jour automatique.
+A desktop music streaming application that combines Spotify metadata with YouTube audio streams, built with Electron, React, and Node.js.
 
-## 🎵 Fonctionnalités
+## Features
 
-- 🖥️ **Application Desktop Windows** avec Electron
-- 🔄 **Mises à jour automatiques** via GitHub
-- 🎵 **Recherche de musique** via Lavalink (YouTube, SoundCloud, etc.)
-- 🎨 **Interface moderne** inspirée de Spotify
-- 🚀 **Flux Lavalink direct** (plus de proxy/ytdl)
-- 🎧 **Lecteur audio** avec contrôles complets
-- 📱 **Design responsive** et intuitif
-- 🌍 **Streaming gratuit** et open source
-- 📚 **Gestion de playlists** locale
-- ⚙️ **Paramètres avancés** avec gestion du cache
+- **Spotify Integration**: Search tracks, albums, and artists using Spotify's metadata
+- **YouTube Audio Streaming**: Stream audio from YouTube using yt-dlp
+- **Modern UI**: Spotify-like interface built with React and Tailwind CSS
+- **Local Caching**: Intelligent caching system for faster playback
+- **Playlist Management**: Create and manage custom playlists
+- **Cross-Platform**: Works on Windows, macOS, and Linux
 
-## 🏗️ Architecture
+## Architecture
 
-### Application Electron
-- **Electron 27** avec Node.js intégré
-- **Système de mise à jour** automatique via GitHub
-- **Flux Lavalink direct** sans intermédiaire
-- **Backend intégré** pour la persistance
+### Main Process (Node.js)
+- Spotify API integration
+- YouTube search and audio streaming
+- Local caching with SQLite
+- IPC communication handlers
 
-### Frontend (TypeScript + React)
-- React 18 avec TypeScript
-- Tailwind CSS pour le style
-- React Router pour la navigation
-- Lucide React pour les icônes
+### Renderer Process (React)
+- Modern UI with Tailwind CSS
+- State management with Zustand
+- Type-safe communication with main process
 
-### Backend (Node.js + TypeScript)
-- Express.js pour l'API REST
-- Socket.IO pour la communication temps réel
-- Moteur de recommandations intelligent
-- Gestion des playlists locales
-
-### Lavalink
-- Serveur Lavalink pour le streaming audio
-- Support YouTube, SoundCloud, Spotify, Apple Music
-- Configuration optimisée pour desktop
-
-## 📦 Installation
-
-### Prérequis
-- Windows 10/11 (x64 ou x86)
-- Java 17+ (inclus dans l'installateur)
-
-### Installation via l'installateur
-
-1. **Télécharger la dernière version**
-   - Allez sur la [page des releases](https://github.com/your-username/OpenSound/releases)
-   - Téléchargez `OpenSound-Setup-x.x.x.exe`
-
-2. **Lancer l'installateur**
-   - Double-cliquez sur le fichier `.exe`
-   - Suivez les instructions d'installation
-   - Choisissez le dossier d'installation (par défaut: `Program Files\OpenSound`)
-
-3. **Lancer l'application**
-   - Raccourci créé sur le bureau et dans le menu Démarrer
-   - L'application démarre automatiquement Lavalink et le backend
-
-### Installation depuis les sources
-
-1. **Cloner le projet**
-```bash
-git clone https://github.com/your-username/OpenSound.git
-cd OpenSound
+### Streaming Pipeline
+```
+Spotify Metadata → YouTube Search → yt-dlp → Audio Buffer → HTML5 Audio Player
 ```
 
-2. **Installer les dépendances**
-```bash
-npm install
-npm run install:all
-```
+## Prerequisites
 
-3. **Builder l'application**
+1. **Node.js** (v18 or higher)
+2. **yt-dlp** - Install and ensure it's in your PATH
+   ```bash
+   # On Windows (using pip)
+   pip install yt-dlp
+
+   # On macOS
+   brew install yt-dlp
+
+   # On Linux
+   sudo apt install yt-dlp
+   ```
+
+## Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/your-username/OpenSound.git
+   cd OpenSound
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Install renderer dependencies:
+   ```bash
+   npm run postinstall
+   ```
+
+## Configuration
+
+1. **Spotify API Credentials**:
+   - Create a Spotify Developer account at [https://developer.spotify.com](https://developer.spotify.com)
+   - Create a new app and get your Client ID and Client Secret
+   - Set environment variables or update the config:
+     ```bash
+     export SPOTIFY_CLIENT_ID="your_client_id"
+     export SPOTIFY_CLIENT_SECRET="your_client_secret"
+     ```
+
+2. **YouTube API Key** (Optional):
+   - Create a YouTube Data API key at [https://console.developers.google.com](https://console.developers.google.com)
+   - Set environment variable:
+     ```bash
+     export YOUTUBE_API_KEY="your_youtube_api_key"
+     ```
+
+## Development
+
+### Start the Application
+
 ```bash
+# Development mode
+npm run dev
+
+# Production build
 npm run build
-npm run electron-build
+
+# Package for distribution
+npm run dist
 ```
 
-4. **Lancer en développement**
-```bash
-npm run electron-dev
-```
-
-## 🎮 Utilisation
-
-### Interface Desktop
-1. **Lancement automatique** des services backend et Lavalink
-2. **Recherche instantanée** via la barre de recherche
-3. **Lecture directe** avec flux Lavalink optimisé
-4. **Playlists personnalisées** avec gestion locale
-5. **Paramètres avancés** pour gérer le cache et les préférences
-
-### Mises à jour automatiques
-- **Vérification automatique** au démarrage
-- **Notification** quand une mise à jour est disponible
-- **Téléchargement silencieux** en arrière-plan
-- **Installation en un clic** avec redémarrage
-
-## ⚙️ Configuration
-
-### Variables d'environnement
-Le fichier `backend/.env` contient la configuration:
-```env
-PORT=3001
-LAVALINK_HOST=localhost
-LAVALINK_PORT=2333
-LAVALINK_PASSWORD=youshallnotpass
-NODE_ENV=production
-```
-
-### Configuration Lavalink
-Le fichier `lavalink/application.yml` est préconfiguré:
-- Port: 2333
-- Password: youshallnotpass
-- Sources: YouTube, SoundCloud, Spotify, etc.
-
-## 🔧 Développement
-
-### Scripts disponibles
-```bash
-# Développement
-npm run electron-dev          # Lance Electron avec backend
-npm run dev:backend          # Backend uniquement
-npm run dev:frontend         # Frontend web (debug)
-
-# Build
-npm run build                # Build frontend
-npm run electron-build       # Build Electron
-npm run build-win            # Build Windows uniquement
-npm run build-all            # Build toutes architectures
-
-# Publication
-npm run publish              # Publie sur GitHub
-```
-
-### Structure du projet
+### Project Structure
 
 ```
 OpenSound/
-├── electron/                # Fichiers Electron
-│   ├── main.js             # Processus principal
-│   ├── preload.js          # Script de préchargement
-│   └── installer.nsh       # Script NSIS personnalisé
-├── backend/                # Backend Node.js
-│   ├── src/
-│   │   ├── routes/         # Routes API
-│   │   ├── services/       # Services métier
-│   │   └── index.ts        # Point d'entrée
-│   └── application.yml     # Config Lavalink
-├── frontend/               # Frontend React
-│   ├── src/
-│   │   ├── components/     # Composants React
-│   │   ├── contexts/       # Contextes React
-│   │   ├── services/       # Services API
-│   │   └── types/          # Types TypeScript
-├── lavalink/              # Serveur Lavalink
-└── electron-package.json  # Configuration Electron Builder
+├── src/
+│   ├── main/                    # Electron main process
+│   │   ├── index.ts           # Main entry point
+│   │   ├── preload.ts          # Preload script
+│   │   ├── ipc/               # IPC handlers
+│   │   └── services/          # Core services
+│   │       ├── spotify.ts     # Spotify API
+│   │       ├── youtube.ts     # YouTube integration
+│   │       ├── streamer.ts    # Audio streaming
+│   │       ├── cache.ts       # Local caching
+│   │       ├── playback.ts    # Playback management
+│   │       └── playlist.ts    # Playlist management
+│   ├── renderer/              # React frontend
+│   │   ├── src/
+│   │   │   ├── components/    # React components
+│   │   │   ├── pages/         # Page components
+│   │   │   ├── stores/        # State management
+│   │   │   ├── hooks/         # Custom hooks
+│   │   │   └── App.tsx        # Main app component
+│   │   └── package.json
+│   └── shared/                # Shared types
+│       └── types/
+├── assets/                    # Static assets
+└── dist/                      # Build output
 ```
 
-## 🚀 Publication
+## Usage
 
-### Configuration GitHub
-1. **Créer un token** GitHub avec permissions de repository
-2. **Configurer** `GH_TOKEN` dans les variables d'environnement
-3. **Publier** avec `npm run publish`
+### Basic Playback
 
-### Processus de publication
-1. **Build** automatique de l'application
-2. **Création** de la release GitHub
-3. **Upload** des installateurs Windows
-4. **Publication** des métadonnées de mise à jour
+1. **Search for Music**: Use the search bar to find tracks, albums, or artists
+2. **Play a Track**: Click on any track to start playback
+3. **Create Playlists**: Build custom playlists from your favorite tracks
+4. **Manage Library**: Organize your music collection in the library section
 
-## 🐛 Dépannage
+### Keyboard Shortcuts
 
-### Problèmes courants
-- **Lavalink ne démarre pas**: Vérifiez que Java 17+ est installé
-- **Audio ne joue pas**: Vérifiez la connexion internet et les pare-feux
-- **Mise à jour échoue**: Redémarrez l'application en administrateur
+- **Space**: Play/Pause
+- **→**: Next Track
+- **←**: Previous Track
+- **↑/↓**: Volume Control
+- **Ctrl+F**: Focus Search
 
-### Logs et debug
-- **Logs backend**: `backend/logs/`
-- **Logs Electron**: Console de développement (F12)
-- **Logs Lavalink**: Affichés dans la console
+## Security
 
-## 🤝 Contribuer
+- All yt-dlp commands are properly sanitized to prevent command injection
+- Spotify credentials are stored securely using Electron's safe storage APIs
+- No audio content is downloaded permanently - only streaming is used
 
-1. Fork le projet
-2. Créer une branche feature
-3. Commit vos changements
-4. Push vers la branche
-5. Créer une Pull Request
+## Performance
 
-## 📄 Licence
+- **Startup Time**: Under 3 seconds
+- **Playback Start**: Under 2 seconds with intelligent buffering
+- **Memory Usage**: Optimized with circular buffer system
+- **Cache Management**: LRU eviction with configurable size limits
 
-MIT License - Voir le fichier LICENSE pour plus de détails.
+## Troubleshooting
 
-## 🙏 Remerciements
+### Common Issues
 
-- **Electron** pour la framework desktop
-- **Lavalink** pour le moteur de streaming audio
-- **React et Tailwind CSS** pour le frontend
-- **Spotify** pour l'inspiration du design
-- **GitHub** pour l'hébergement et les mises à jour
+1. **"yt-dlp not found"**
+   - Ensure yt-dlp is installed and in your PATH
+   - Try running `yt-dlp --version` in your terminal
+
+2. **Spotify API errors**
+   - Verify your Client ID and Secret are correct
+   - Check your internet connection
+   - Ensure your Spotify Developer app is properly configured
+
+3. **No audio playback**
+   - Check your system volume
+   - Verify yt-dlp can access YouTube
+   - Try a different track to isolate the issue
+
+### Logs
+
+- Development logs are shown in the developer console
+- Production logs are saved to the user data directory
+- Enable debug mode with `DEBUG=opensound:* npm run dev`
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Commit your changes: `git commit -am 'Add feature'`
+4. Push to the branch: `git push origin feature-name`
+5. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Disclaimer
+
+This application is for educational purposes only. It uses Spotify's public API for metadata and YouTube for audio streaming. Please respect the terms of service of both platforms.
+
+## Support
+
+- **Issues**: [GitHub Issues](https://github.com/your-username/OpenSound/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/your-username/OpenSound/discussions)
+- **Documentation**: [Wiki](https://github.com/your-username/OpenSound/wiki)
+
+---
+
+**Built with ❤️ using Electron, React, and modern web technologies**
