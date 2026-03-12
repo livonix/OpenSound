@@ -7,15 +7,18 @@ config();
 
 import { setupIpcHandlers } from './ipc/index';
 import { ConfigService } from './services/config';
+import { UpdaterService } from './services/updater';
 
 class OpenSoundApp {
   private mainWindow: BrowserWindow | null = null;
   private configService: ConfigService;
   private dirPath: string;
+  private updaterService: UpdaterService;
 
   constructor(dirPath?: string) {
     this.configService = new ConfigService();
     this.dirPath = dirPath || __dirname;
+    this.updaterService = new UpdaterService();
   }
 
   private createWindow(): void {
@@ -63,6 +66,14 @@ class OpenSoundApp {
       console.log('Window ready to show');
       this.mainWindow?.show();
       this.mainWindow?.focus();
+      
+      // Configurer le service de mise à jour
+      this.updaterService.setMainWindow(this.mainWindow!);
+      
+      // Vérifier les mises à jour après le démarrage
+      setTimeout(() => {
+        this.updaterService.checkForUpdates();
+      }, 5000); // Attendre 5 secondes après le démarrage
     });
 
     // Handle window closed

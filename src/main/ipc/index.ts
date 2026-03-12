@@ -7,6 +7,7 @@ import { StreamService } from '../services/streamer';
 import { CacheService } from '../services/cache';
 import { PlaybackService } from '../services/playback';
 import { PlaylistService } from '../services/playlist';
+import { UpdaterService } from '../services/updater';
 import { Track } from '../../shared/types';
 
 let configService: ConfigService;
@@ -17,6 +18,7 @@ let streamService: StreamService;
 let cacheService: CacheService;
 let playbackService: PlaybackService;
 let playlistService: PlaylistService;
+let updaterService: UpdaterService;
 
 export function setupIpcHandlers(): void {
   // Initialize services
@@ -30,6 +32,7 @@ export function setupIpcHandlers(): void {
   cacheService = new CacheService(config.cache);
   playbackService = new PlaybackService(streamService);
   playlistService = new PlaylistService();
+  updaterService = new UpdaterService();
 
   // Spotify API handlers
   ipcMain.handle('spotify:search-tracks', async (_, query: string, limit: number = 20) => {
@@ -276,6 +279,26 @@ export function setupIpcHandlers(): void {
       return { success: true };
     } catch (error) {
       console.error('Update config error:', error);
+      throw error;
+    }
+  });
+
+  // Updater handlers
+  ipcMain.handle('updater:check-for-updates', async () => {
+    try {
+      updaterService.checkForUpdates();
+      return { success: true };
+    } catch (error) {
+      console.error('Check for updates error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('updater:is-update-available', async () => {
+    try {
+      return updaterService.isUpdateAvailable();
+    } catch (error) {
+      console.error('Check update available error:', error);
       throw error;
     }
   });

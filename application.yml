@@ -55,8 +55,8 @@ plugins:
       flowerytts: false
       youtube: true
     spotify:
-      clientId: "ab68f229bd1749c0b49a16e630ab7463" # À configurer sur developer.spotify.com
-      clientSecret: "a3840eccb8ef4803a10f8143a6c31ba3" # À configurer sur developer.spotify.com
+      clientId: "" # À configurer sur developer.spotify.com
+      clientSecret: "" # À configurer sur developer.spotify.com
       countryCode: "FR"
       playlistLoadLimit: 100
       albumLoadLimit: 50

@@ -78,7 +78,7 @@ export class UpdaterService {
     if (!this.mainWindow) return;
 
     const options = {
-      type: 'info',
+      type: 'info' as const,
       title: 'Mise à jour disponible',
       message: `OpenSound ${info.version} est disponible!`,
       detail: `Version actuelle: ${app.getVersion()}\nNouvelle version: ${info.version}\n\nVoulez-vous télécharger la mise à jour maintenant?`,
@@ -98,7 +98,7 @@ export class UpdaterService {
     if (!this.mainWindow) return;
 
     const options = {
-      type: 'info',
+      type: 'info' as const,
       title: 'Mise à jour prête',
       message: 'La mise à jour a été téléchargée',
       detail: 'L\'application va redémarrer pour installer la mise à jour.',
