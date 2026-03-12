@@ -40,3 +40,4 @@ yarn-error.log*
 /backend/plugins
 /dist
 /src/renderer/node_modules
+/release

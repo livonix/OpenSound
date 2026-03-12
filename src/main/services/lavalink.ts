@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { AppConfig } from '../../shared/types';
+import { YouTubeService } from './youtube';
 
 interface LavalinkTrackInfo {
   identifier: string;
@@ -19,10 +20,12 @@ interface LavalinkTrack {
 }
 
 interface LoadTracksResponse {
-  loadType: 'TRACK_LOADED' | 'PLAYLIST_LOADED' | 'SEARCH_RESULT' | 'NO_MATCHES' | 'LOAD_FAILED' | 'empty' | 'error';
+  // Ajout des types v4 ('track', 'search', 'playlist')
+  loadType: 'TRACK_LOADED' | 'PLAYLIST_LOADED' | 'SEARCH_RESULT' | 'NO_MATCHES' | 'LOAD_FAILED' | 'empty' | 'error' | 'track' | 'search' | 'playlist';
   playlistInfo?: { name?: string; selectedTrack?: number };
   tracks?: LavalinkTrack[];
-  data?: LavalinkTrack[] | { message: string; severity: string; cause?: string }; // Can be tracks or error
+  // Ajout de "LavalinkTrack" (objet unique) car Lavalink v4 renvoie un objet et non un tableau pour une URL directe
+  data?: LavalinkTrack[] | LavalinkTrack | { message: string; severity: string; cause?: string }; 
 }
 
 export class LavalinkService {
@@ -30,7 +33,10 @@ export class LavalinkService {
   private readonly password: string;
   private readonly secure: boolean;
   private audioUrlCache: Map<string, { url: string; timestamp: number }> = new Map();
+  private searchCache: Map<string, { tracks: LavalinkTrack[]; timestamp: number }> = new Map();
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  private readonly SEARCH_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes pour la recherche
+  private readonly youtubeService: YouTubeService;
 
   constructor(config: AppConfig['lavalink']) {
     const host = config?.host || 'localhost';
@@ -38,6 +44,7 @@ export class LavalinkService {
     this.password = config?.password || 'youshallnotpass';
     this.secure = !!config?.secure;
     this.baseUrl = `${this.secure ? 'https' : 'http'}://${host}:${port}/v4`;
+    this.youtubeService = new YouTubeService();
   }
 
   public async searchTracks(query: string): Promise<LavalinkTrack[]> {
@@ -45,20 +52,41 @@ export class LavalinkService {
     
     // Check cache first
     const cacheKey = `search:${query}`;
-    const cached = this.audioUrlCache.get(cacheKey);
-    if (cached && (Date.now() - cached.timestamp) < this.CACHE_DURATION) {
+    const cached = this.searchCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp) < this.SEARCH_CACHE_DURATION) {
       console.log('Using cached search results for:', query);
-      // For search, we don't cache the actual results, just the fact that we searched
+      return cached.tracks;
     }
 
     try {
       const tracks = await this.loadTracks(query);
       console.log(`Lavalink found ${tracks.length} tracks for:`, query);
+      
+      // Cache the search results
+      this.searchCache.set(cacheKey, { tracks, timestamp: Date.now() });
+      
+      // Précharger les URLs audio en arrière-plan pour les 3 premiers tracks
+      this.preloadAudioUrls(tracks.slice(0, 3));
+      
       return tracks;
     } catch (error) {
       console.error('Lavalink search failed:', error);
       throw error;
     }
+  }
+
+  private async preloadAudioUrls(tracks: LavalinkTrack[]): Promise<void> {
+    // Précharger les URLs audio en arrière-plan sans bloquer
+    tracks.forEach(async (track) => {
+      if (track.info?.identifier && !this.audioUrlCache.has(track.info.identifier)) {
+        try {
+          await this.getAudioUrlFromVideoId(track.info.identifier);
+          console.log('Preloaded audio URL for:', track.info.title);
+        } catch (error) {
+          console.log('Failed to preload audio for:', track.info.title);
+        }
+      }
+    });
   }
 
   public async getDirectAudioUrl(videoId: string): Promise<string> {
@@ -105,100 +133,25 @@ export class LavalinkService {
       console.log('Lavalink: Raw tracks count:', res.data.tracks?.length || 0);
       console.log('Lavalink: Raw data count:', dataTracks.length);
       
-      if (res.data.loadType === 'NO_MATCHES') {
+      if (res.data.loadType === 'NO_MATCHES' || res.data.loadType === 'empty') {
         console.log('Lavalink: No matches found for query:', query);
         return [];
       }
       
       if (res.data.loadType === 'LOAD_FAILED' || res.data.loadType === 'error') {
-        console.log('Lavalink: YouTube search failed, using working YouTube tracks');
-        return this.getWorkingTracks(query);
+        console.log('Lavalink: YouTube search failed');
+        throw new Error(`Lavalink search failed: ${res.data.loadType}`);
       }
       
       // For YouTube plugin responses, tracks are in res.data.data
       // For built-in sources, tracks are in res.data.tracks
-      const tracks = dataTracks || res.data.tracks || [];
+      const tracks = dataTracks.length > 0 ? dataTracks : (res.data.tracks || []);
       console.log('Lavalink: Returning', tracks.length, 'tracks for query:', query);
       return tracks;
     } catch (error) {
-      console.error('Lavalink: HTTP request failed:', error, '- using working tracks');
-      return this.getWorkingTracks(query);
+      console.error('Lavalink: HTTP request failed:', error);
+      throw error;
     }
-  }
-
-  private getWorkingTracks(query: string): LavalinkTrack[] {
-    console.log('Lavalink: Using working YouTube tracks for query:', query);
-    
-    // Real YouTube tracks that work with Piped
-    const workingTracks = [
-      {
-        track: '',
-        info: {
-          identifier: 'qxyGFN3MMSw', // Different GIMS SPA video that might work better
-          isSeekable: true,
-          author: 'GIMS',
-          length: 222000,
-          isStream: false,
-          position: 0,
-          title: 'Gims Feat. Theodora - Spa (Slowed)',
-          uri: 'https://www.youtube.com/watch?v=qxyGFN3MMSw',
-          sourceName: 'youtube'
-        }
-      },
-      {
-        track: '',
-        info: {
-          identifier: 'dQw4w9WgXcQ',
-          isSeekable: true,
-          author: 'Rick Astley',
-          length: 212000,
-          isStream: false,
-          position: 0,
-          title: 'Never Gonna Give You Up (Official Music Video)',
-          uri: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-          sourceName: 'youtube'
-        }
-      },
-      {
-        track: '',
-        info: {
-          identifier: '9bZkp7q19f0',
-          isSeekable: true,
-          author: 'PSY',
-          length: 252000,
-          isStream: false,
-          position: 0,
-          title: 'PSY - GANGNAM STYLE',
-          uri: 'https://www.youtube.com/watch?v=9bZkp7q19f0',
-          sourceName: 'youtube'
-        }
-      },
-      {
-        track: '',
-        info: {
-          identifier: 'hTWKbfoikeg', // Despacito - very popular, should work
-          isSeekable: true,
-          author: 'Luis Fonsi',
-          length: 279000,
-          isStream: false,
-          position: 0,
-          title: 'Despacito',
-          uri: 'https://www.youtube.com/watch?v=hTWKbfoikeg',
-          sourceName: 'youtube'
-        }
-      }
-    ];
-    
-    // Filter based on query but always include GIMS SPA if searching for it
-    if (query.toLowerCase().includes('gims') || query.toLowerCase().includes('spa')) {
-      return workingTracks.filter(track => 
-        track.info.title.toLowerCase().includes('gims') || 
-        track.info.title.toLowerCase().includes('spa') ||
-        track.info.author.toLowerCase().includes('gims')
-      );
-    }
-    
-    return workingTracks;
   }
 
   public async getAudioUrlFromVideoId(videoId: string): Promise<string> {
@@ -223,26 +176,58 @@ export class LavalinkService {
       return videoId;
     }
     
-    // Try Piped as fallback
+    // Use pure Lavalink for streaming
     try {
-      const piped = process.env.PIPED_INSTANCE || 'https://piped.video';
-      const res = await axios.get(`${piped}/api/v1/video/${videoId}`, {
-        headers: { 'Accept': 'application/json' }
+      // FIX: Load the track using complete YouTube URL
+      const trackIdentifier = `https://www.youtube.com/watch?v=${videoId}`;
+      
+      const loadRes = await axios.get<LoadTracksResponse>(`${this.baseUrl}/loadtracks`, {
+        params: { identifier: trackIdentifier },
+        headers: { Authorization: this.password }
       });
-      const audioStreams = res.data?.audioStreams || [];
-      if (!Array.isArray(audioStreams) || audioStreams.length === 0) {
-        throw new Error('No audio streams found from Piped');
+      
+      const loadType = loadRes.data.loadType;
+      
+      if (['NO_MATCHES', 'LOAD_FAILED', 'error', 'empty'].includes(loadType)) {
+        throw new Error(`Failed to load track for video ID: ${videoId} (LoadType: ${loadType})`);
       }
-      // Prefer highest bitrate, opus/webm first when available
-      audioStreams.sort((a: any, b: any) => (b.bitrate || 0) - (a.bitrate || 0));
-      const best = audioStreams[0];
-      if (!best?.url) {
-        throw new Error('Selected audio stream lacks direct URL');
+      
+      let tracks: LavalinkTrack[] = [];
+      
+      // FIX: Handle both Array (Search/Playlist) and Single Object (Direct URL Track in v4)
+      if (Array.isArray(loadRes.data.data)) {
+        tracks = loadRes.data.data;
+      } else if (loadRes.data.data && typeof loadRes.data.data === 'object' && 'info' in loadRes.data.data) {
+        // Lavalink v4 returns a single object for "track" loadType
+        tracks = [loadRes.data.data as unknown as LavalinkTrack];
+      } else {
+        // Fallback for Lavalink v3
+        tracks = loadRes.data.tracks || [];
       }
-      return best.url;
+      
+      if (tracks.length === 0) {
+        throw new Error(`No tracks found for video ID: ${videoId}`);
+      }
+      
+      const track = tracks[0];
+      if (!track.info?.uri) {
+        throw new Error(`Track has no URI for video ID: ${videoId}`);
+      }
+      
+      console.log('Extracting audio from YouTube URI:', track.info.uri);
+      
+      // Use YouTubeService to get the actual audio stream URL
+      try {
+        const audioStreamUrl = await this.youtubeService.getDirectAudioUrl(videoId);
+        console.log('YouTube audio stream URL obtained:', audioStreamUrl);
+        return audioStreamUrl;
+      } catch (ytError) {
+        console.error('YouTubeService failed, falling back to URI:', ytError);
+        return track.info.uri;
+      }
     } catch (error) {
-      console.error('Audio URL retrieval failed:', error);
-      throw error;
+      console.error('Lavalink audio URL retrieval failed:', error);
+      throw new Error(`Failed to get Lavalink stream for video ID: ${videoId}`);
     }
   }
 }

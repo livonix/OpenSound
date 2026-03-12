@@ -5,7 +5,7 @@ import { YouTubeVideo, StreamInfo } from '../../shared/types';
 export class YouTubeService {
   private ytDlpPath: string;
   private audioUrlCache: Map<string, { url: string; timestamp: number }> = new Map();
-  private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  private readonly CACHE_DURATION = 30 * 60 * 1000; // 30 minutes (augmenté pour la performance)
 
   constructor() {
     // Try to find yt-dlp in common locations
