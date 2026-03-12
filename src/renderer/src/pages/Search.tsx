@@ -3,10 +3,19 @@ import { Search as SearchIcon, X } from 'lucide-react';
 import { useSearchStore } from '../stores/searchStore';
 import { usePlayerStore } from '../stores/playerStore';
 import { audioPlayer } from '../services/audioPlayer';
-import { Track } from '@shared/types';
+import { Track } from '../../../shared/types';
 
 export function Search() {
   const [searchInput, setSearchInput] = useState('');
+  
+  // Debug: Check if electronAPI is available
+  React.useEffect(() => {
+    console.log('electronAPI available:', !!(window as any).electronAPI);
+    if ((window as any).electronAPI) {
+      console.log('electronAPI methods:', Object.keys((window as any).electronAPI));
+    }
+  }, []);
+  
   const { 
     query, 
     results, 
@@ -50,12 +59,24 @@ export function Search() {
       setError(null);
       setQuery(searchQuery);
 
+      // Check if electronAPI is available
+      if (!(window as any).electronAPI || !(window as any).electronAPI.searchTracks) {
+        throw new Error('Electron API not available. Make sure the app is running in Electron context, not in a browser.');
+      }
+
       // Use Electron API directly
       const searchResults = await (window as any).electronAPI.searchTracks(searchQuery, 20);
       setResults(searchResults);
     } catch (err) {
-      setError('Failed to search. Please try again.');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to search. Please try again.';
+      setError(errorMessage);
       console.error('Search error:', err);
+      
+      // If running in browser context, provide helpful message
+      if (errorMessage.includes('Electron API not available')) {
+        console.log('Running in browser context - Electron APIs are not available');
+        console.log('To test search functionality, run the app in Electron context using: npm run dev');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -63,6 +84,9 @@ export function Search() {
 
   const handlePlayTrack = async (track: Track) => {
     try {
+      const tracks = results.tracks || [];
+      const index = tracks.findIndex(t => t.id === track.id);
+      usePlayerStore.getState().setQueue(tracks, index >= 0 ? index : 0);
       await audioPlayer.playTrack(track);
     } catch (error) {
       console.error('Error playing track:', error);

@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { app } from 'electron';
-import { Playlist, Track } from '@shared/types';
+import { Playlist, Track } from '../../shared/types';
 
 export class PlaylistService {
   private playlistsPath: string;

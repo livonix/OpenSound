@@ -12,6 +12,7 @@ export interface ElectronAPI {
   searchYouTube: (query: string) => Promise<any>;
   getStreamInfo: (videoId: string) => Promise<any>;
   getAudioStream: (videoId: string) => Promise<ReadableStream>;
+  getAudioUrl: (videoId: string) => Promise<string>;
 
   // Playback controls
   playTrack: (track: any) => Promise<void>;
@@ -55,13 +56,16 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke('spotify:get-artist', id),
 
   searchYouTube: (query: string) => 
-    ipcRenderer.invoke('youtube:search', query),
+    ipcRenderer.invoke('lavalink:search', query),
   
   getStreamInfo: (videoId: string) => 
     ipcRenderer.invoke('youtube:get-stream-info', videoId),
   
   getAudioStream: (videoId: string) => 
     ipcRenderer.invoke('youtube:get-audio-stream', videoId),
+  
+  getAudioUrl: (videoId: string) => 
+    ipcRenderer.invoke('lavalink:get-audio-url', videoId),
 
   playTrack: (track: any) => 
     ipcRenderer.invoke('playback:play', track),
@@ -115,7 +119,8 @@ const electronAPI: ElectronAPI = {
 // Expose the API to the renderer process
 contextBridge.exposeInMainWorld('electronAPI', electronAPI);
 
-console.log('Preload script loaded and electronAPI exposed');
+console.log('Preload script loaded and electronAPI exposed to window');
+console.log('Available methods:', Object.keys(electronAPI));
 
 // Type declaration for the renderer process
 declare global {

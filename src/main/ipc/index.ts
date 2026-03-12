@@ -1,16 +1,18 @@
 import { ipcMain, shell, app } from 'electron';
-import { ConfigService } from '../services/config.js';
-import { SpotifyService } from '../services/spotify.js';
-import { YouTubeService } from '../services/youtube.js';
-import { StreamService } from '../services/streamer.js';
-import { CacheService } from '../services/cache.js';
-import { PlaybackService } from '../services/playback.js';
-import { PlaylistService } from '../services/playlist.js';
-import { Track } from '@shared/types';
+import { ConfigService } from '../services/config';
+import { SpotifyService } from '../services/spotify';
+import { YouTubeService } from '../services/youtube';
+import { LavalinkService } from '../services/lavalink';
+import { StreamService } from '../services/streamer';
+import { CacheService } from '../services/cache';
+import { PlaybackService } from '../services/playback';
+import { PlaylistService } from '../services/playlist';
+import { Track } from '../../shared/types';
 
 let configService: ConfigService;
 let spotifyService: SpotifyService;
 let youtubeService: YouTubeService;
+let lavalinkService: LavalinkService;
 let streamService: StreamService;
 let cacheService: CacheService;
 let playbackService: PlaybackService;
@@ -23,6 +25,7 @@ export function setupIpcHandlers(): void {
   
   spotifyService = new SpotifyService(config.spotify.clientId, config.spotify.clientSecret);
   youtubeService = new YouTubeService();
+  lavalinkService = new LavalinkService(config.lavalink);
   streamService = new StreamService();
   cacheService = new CacheService(config.cache);
   playbackService = new PlaybackService(streamService);
@@ -66,11 +69,48 @@ export function setupIpcHandlers(): void {
   });
 
   // YouTube API handlers
-  ipcMain.handle('youtube:search', async (_, query: string) => {
+  ipcMain.handle('lavalink:search', async (_, query: string) => {
     try {
-      return await youtubeService.searchVideos(query);
+      console.log('IPC: Lavalink search called with query:', query);
+      
+      const variants = Array.from(new Set([
+        query,
+        query.replace(/audio/gi, '').trim(),
+        query.replace(/-/g, ' ').trim(),
+        query.replace(/\s+/g, ' ').trim()
+      ])).filter(q => q.length > 0);
+
+      console.log('IPC: Search variants:', variants);
+
+      let tracks: any[] = [];
+      for (const q of variants) {
+        console.log('IPC: Trying variant:', q);
+        tracks = await lavalinkService.loadTracks(q);
+        console.log('IPC: Variant returned', tracks.length, 'tracks');
+        if (tracks && tracks.length > 0) break;
+      }
+
+      console.log('IPC: Final tracks count:', tracks.length);
+      
+      if (!tracks || !Array.isArray(tracks)) {
+        console.log('IPC: Invalid tracks array, returning empty result');
+        return [];
+      }
+      
+      const mappedTracks = tracks.map(t => ({
+        id: t.info.identifier, // Keep identifier for lookup
+        title: t.info.title,
+        channel: t.info.author,
+        duration: t.info.length?.toString() || '',
+        url: t.info.uri,
+        streamUrl: t.info.streamUrl || t.info.uri, // Use streamUrl if available
+        thumbnail: t.info.sourceName === 'youtube' ? `https://i.ytimg.com/vi/${t.info.identifier}/hqdefault.jpg` : `https://i.ytimg.com/vi/default.jpg`
+      }));
+      
+      console.log('IPC: Mapped tracks:', mappedTracks.length);
+      return mappedTracks;
     } catch (error) {
-      console.error('YouTube search error:', error);
+      console.error('Lavalink search error:', error);
       throw error;
     }
   });
@@ -84,12 +124,13 @@ export function setupIpcHandlers(): void {
     }
   });
 
-  ipcMain.handle('youtube:get-audio-url', async (_, videoId: string) => {
+  ipcMain.handle('lavalink:get-audio-url', async (_, videoId: string) => {
     try {
-      const streamInfo = await youtubeService.getStreamInfo(videoId);
-      return streamInfo.streamUrl;
+      console.log('Getting Lavalink audio URL for:', videoId);
+      const sourceUrl = await lavalinkService.getAudioUrlFromVideoId(videoId);
+      return sourceUrl;
     } catch (error) {
-      console.error('YouTube audio URL error:', error);
+      console.error('Lavalink audio URL error:', error);
       throw error;
     }
   });

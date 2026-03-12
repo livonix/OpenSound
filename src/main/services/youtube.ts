@@ -1,9 +1,11 @@
 import { spawn, ChildProcess } from 'child_process';
 import { Readable } from 'stream';
-import { YouTubeVideo, StreamInfo } from '@shared/types';
+import { YouTubeVideo, StreamInfo } from '../../shared/types';
 
 export class YouTubeService {
   private ytDlpPath: string;
+  private audioUrlCache: Map<string, { url: string; timestamp: number }> = new Map();
+  private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
   constructor() {
     // Try to find yt-dlp in common locations
@@ -95,7 +97,7 @@ export class YouTubeService {
       const args = [
         '--no-warnings',
         '--format',
-        'bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio',
+        'bestaudio/best[height<=0]',
         '--dump-json',
         `https://www.youtube.com/watch?v=${videoId}`
       ];
@@ -140,11 +142,116 @@ export class YouTubeService {
     });
   }
 
+  public async getDirectAudioUrl(videoId: string): Promise<string> {
+    // Check cache first
+    const cached = this.audioUrlCache.get(videoId);
+    const now = Date.now();
+    
+    if (cached && (now - cached.timestamp) < this.CACHE_DURATION) {
+      console.log('Using cached URL for video:', videoId);
+      return cached.url;
+    }
+
+    return new Promise((resolve, reject) => {
+      const args = [
+        '--no-warnings',
+        '--no-playlist',
+        '--skip-download',
+        '--flat-playlist',
+        '--no-check-certificates',
+        '--quiet',
+        '--format',
+        'ba', // bestaudio ultra-rapide
+        '-g', // Get direct URL
+        `https://www.youtube.com/watch?v=${videoId}`
+      ];
+
+      const process = spawn(this.ytDlpPath, args);
+      let stdout = '';
+      let stderr = '';
+
+      process.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      process.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      process.on('close', (code) => {
+        if (code !== 0) {
+          console.log(`First attempt failed, trying fallback format...`);
+          // Try with just 'worst' as last resort
+          const fallbackArgs = [
+            '--no-warnings',
+            '--no-playlist',
+            '--skip-download',
+            '--flat-playlist',
+            '--no-check-certificates',
+            '--quiet',
+            '--format',
+            'worst',
+            '-g',
+            `https://www.youtube.com/watch?v=${videoId}`
+          ];
+          
+          const fallbackProcess = spawn(this.ytDlpPath, fallbackArgs);
+          let fallbackStdout = '';
+          let fallbackStderr = '';
+          
+          fallbackProcess.stdout.on('data', (data) => {
+            fallbackStdout += data.toString();
+          });
+          
+          fallbackProcess.stderr.on('data', (data) => {
+            fallbackStderr += data.toString();
+          });
+          
+          fallbackProcess.on('close', (fallbackCode) => {
+            if (fallbackCode !== 0) {
+              reject(new Error(`yt-dlp failed for both formats. Original: ${stderr}, Fallback: ${fallbackStderr}`));
+              return;
+            }
+            
+            const url = fallbackStdout.trim();
+            if (url) {
+              // Cache the fallback URL too
+              this.audioUrlCache.set(videoId, { url, timestamp: Date.now() });
+              console.log('Cached fallback URL for video:', videoId);
+              resolve(url);
+            } else {
+              reject(new Error('No URL found in fallback'));
+            }
+          });
+          
+          fallbackProcess.on('error', (error) => {
+            reject(new Error(`Fallback process failed: ${error.message}`));
+          });
+          return;
+        }
+
+        const url = stdout.trim();
+        if (url) {
+          // Cache the URL
+          this.audioUrlCache.set(videoId, { url, timestamp: Date.now() });
+          console.log('Cached new URL for video:', videoId);
+          resolve(url);
+        } else {
+          reject(new Error('No direct URL found'));
+        }
+      });
+
+      process.on('error', (error) => {
+        reject(new Error(`Failed to spawn yt-dlp: ${error.message}`));
+      });
+    });
+  }
+
   public getAudioStream(videoId: string): Readable {
     const args = [
       '--no-warnings',
       '--format',
-      'bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio',
+      'bestaudio/best[height<=0]',
       '-o',
       '-', // Output to stdout
       `https://www.youtube.com/watch?v=${videoId}`

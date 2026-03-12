@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { app } from 'electron';
-import { CacheEntry } from '@shared/types';
+import { CacheEntry } from '../../shared/types';
 
 export class CacheService {
   private cachePath: string;

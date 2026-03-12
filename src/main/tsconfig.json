@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "ES2022",
+    "module": "CommonJS",
     "moduleResolution": "node",
     "outDir": "../../dist/main",
     "paths": {
@@ -19,6 +19,6 @@
     "allowImportingTsExtensions": false,
     "noEmit": false
   },
-  "include": ["**/*"],
-  "exclude": ["node_modules", "../renderer/**/*"]
+  "include": ["index.ts", "ipc/**/*", "services/**/*", "shared/**/*"],
+  "exclude": ["node_modules", "../renderer/**/*", "preload.ts"]
 }

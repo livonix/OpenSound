@@ -1,6 +1,7 @@
 import { Readable, Transform } from 'stream';
-import { YouTubeService } from './youtube.js';
-import { Track } from '@shared/types';
+import { YouTubeService } from './youtube';
+import { Track } from '../../shared/types';
+import axios from 'axios';
 
 export class StreamService {
   private youtubeService: YouTubeService;
@@ -8,6 +9,50 @@ export class StreamService {
 
   constructor() {
     this.youtubeService = new YouTubeService();
+  }
+
+  public async getFastAudioStream(track: Track): Promise<Readable> {
+    // First, find the YouTube video for this track
+    const artistName = track.artists[0]?.name || '';
+    const trackTitle = track.name;
+    
+    const searchQuery = `${artistName} - ${trackTitle} audio`;
+    const videos = await this.youtubeService.searchVideos(searchQuery, 5);
+    
+    const bestMatch = this.youtubeService.findBestMatch(videos, trackTitle, artistName);
+    
+    if (!bestMatch) {
+      throw new Error(`No suitable YouTube video found for: ${artistName} - ${trackTitle}`);
+    }
+
+    // Get direct audio URL for ultra-fast streaming
+    const directUrl = await this.youtubeService.getDirectAudioUrl(bestMatch.id);
+    
+    // Stream directly from the CDN URL
+    const response = await axios({
+      method: 'GET',
+      url: directUrl,
+      responseType: 'stream',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+
+    const stream = response.data;
+    
+    // Store the stream for cleanup
+    this.activeStreams.set(track.id, stream);
+    
+    // Add cleanup when stream ends
+    stream.on('end', () => {
+      this.activeStreams.delete(track.id);
+    });
+    
+    stream.on('error', () => {
+      this.activeStreams.delete(track.id);
+    });
+
+    return stream;
   }
 
   public async getAudioStream(track: Track): Promise<Readable> {
@@ -98,6 +143,11 @@ export class StreamService {
     });
 
     return bufferedStream;
+  }
+
+  public async getStreamWithFastBuffer(track: Track, bufferSize: number = 1024 * 1024): Promise<Readable> {
+    const fastStream = await this.getFastAudioStream(track);
+    return this.createBufferedStream(fastStream, bufferSize);
   }
 
   public async getStreamWithBuffer(track: Track, bufferSize: number = 1024 * 1024): Promise<Readable> {

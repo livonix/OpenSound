@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { app } from 'electron';
-import { AppConfig } from '@shared/types';
+import { AppConfig } from '../../shared/types';
 
 export class ConfigService {
   private configPath: string;
@@ -20,6 +20,12 @@ export class ConfigService {
       },
       youtube: {
         apiKey: process.env.YOUTUBE_API_KEY
+      },
+      lavalink: {
+        host: process.env.LAVALINK_HOST || 'localhost',
+        port: parseInt(process.env.LAVALINK_PORT || '2333', 10),
+        password: process.env.LAVALINK_PASSWORD || 'youshallnotpass',
+        secure: (process.env.LAVALINK_SECURE || 'false').toLowerCase() === 'true'
       },
       cache: {
         maxSize: 100 * 1024 * 1024, // 100MB

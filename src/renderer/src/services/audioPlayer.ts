@@ -1,4 +1,4 @@
-import { Track } from '@shared/types';
+import { Track } from '../../../shared/types';
 import { usePlayerStore } from '../stores/playerStore';
 
 export class AudioPlayerService {
@@ -35,52 +35,102 @@ export class AudioPlayerService {
     });
 
     this.audio.addEventListener('ended', () => {
-      usePlayerStore.getState().setPlaying(false);
+      this.next();
     });
 
     this.audio.addEventListener('error', (e) => {
+      const src = this.audio?.src || '';
+      if (!src || src === 'about:blank') {
+        return;
+      }
       console.error('Audio playback error:', e);
+      console.error('Audio src:', src);
+      console.error('Audio error code:', this.audio?.error);
       usePlayerStore.getState().setPlaying(false);
     });
   }
 
   public async playTrack(track: Track): Promise<void> {
     try {
+      console.log('=== playTrack called ===');
+      console.log('Track:', track.name, 'by', track.artists[0]?.name);
+      
       // Stop current playback
       this.stop();
+
+      // Check if electronAPI is available
+      console.log('Checking electronAPI...');
+      const electronAPI = (window as any).electronAPI;
+      
+      if (!electronAPI) {
+        console.error('Electron API not available');
+        throw new Error('Electron API not available - make sure the app is running in Electron');
+      }
+      console.log('electronAPI found, checking methods...');
+
+      // Check if getAudioUrl method exists
+      if (typeof electronAPI.getAudioUrl !== 'function') {
+        console.error('getAudioUrl method not found');
+        throw new Error('getAudioUrl method not available in Electron API');
+      }
+      console.log('getAudioUrl method found, proceeding...');
 
       // Set current track
       this.currentTrack = track;
       usePlayerStore.getState().setCurrentTrack(track);
 
-      // Get YouTube audio URL using Electron API directly
-      const electronAPI = (window as any).electronAPI;
+      // Get YouTube audio URL using Electron API (Lavalink v4)
+      const searchQuery = `${track.artists[0]?.name || ''} ${track.name}`;
+      console.log('Searching Lavalink for:', searchQuery);
+      const tracks = await electronAPI.searchYouTube(searchQuery); // Utilise searchYouTube qui pointe vers Lavalink
       
-      if (!electronAPI) {
-        throw new Error('Electron API not available');
+      console.log('Lavalink tracks found:', tracks.length);
+      console.log('Lavalink tracks data:', tracks);
+      
+      let finalTracks = tracks;
+      
+      if (tracks.length === 0) {
+        // Try a simpler search without artist name
+        console.log('Trying simpler Lavalink search...');
+        const simpleQuery = track.name;
+        const simpleTracks = await electronAPI.searchYouTube(simpleQuery);
+        console.log('Simple Lavalink search found:', simpleTracks.length);
+        
+        if (simpleTracks.length === 0) {
+          throw new Error(`No tracks found for "${searchQuery}" or "${simpleQuery}"`);
+        }
+        
+        // Use simple search results
+        finalTracks = simpleTracks;
       }
 
-      // Search for YouTube video
-      const videos = await electronAPI.searchYouTube(`${track.artists[0]?.name || ''} - ${track.name} audio`);
+      // Get audio URL for the first track
+      console.log('Getting Lavalink audio URL for track:', finalTracks[0].id);
+      const audioUrl = await electronAPI.getAudioUrl(finalTracks[0].id); // Utilise getAudioUrl qui pointe vers Lavalink
       
-      if (videos.length === 0) {
-        throw new Error('No YouTube video found for this track');
-      }
-
-      // Get audio URL for the first video
-      const audioUrl = await electronAPI.getAudioUrl(videos[0].id);
+      console.log('Audio URL received:', audioUrl);
+      console.log('Audio URL type:', typeof audioUrl);
+      console.log('Audio URL length:', audioUrl?.length);
       
-      if (!audioUrl) {
-        throw new Error('Could not get audio URL for YouTube video');
+      if (!audioUrl || audioUrl === '' || audioUrl.startsWith('http://localhost')) {
+        console.error('Invalid audio URL detected:', audioUrl);
+        throw new Error('Invalid or empty audio URL received');
       }
 
       // Set audio source and play
       if (this.audio) {
+        // IMPORTANT: Only set src when we have a valid URL
         this.audio.src = audioUrl;
-        this.audio.load();
+        console.log('Audio src set to:', audioUrl);
         
-        await this.audio.play();
-        usePlayerStore.getState().setPlaying(true);
+        try {
+          await this.audio.play();
+          usePlayerStore.getState().setPlaying(true);
+          console.log('Audio playing successfully');
+        } catch (playError) {
+          console.error('Failed to play audio:', playError);
+          throw playError;
+        }
       }
     } catch (error) {
       console.error('Error playing track:', error);
@@ -107,7 +157,8 @@ export class AudioPlayerService {
     if (this.audio) {
       this.audio.pause();
       this.audio.currentTime = 0;
-      this.audio.src = '';
+      this.audio.removeAttribute('src');
+      this.audio.load();
       usePlayerStore.getState().setPlaying(false);
     }
   }
@@ -123,6 +174,20 @@ export class AudioPlayerService {
     if (this.audio) {
       this.audio.currentTime = Math.max(0, Math.min(time, this.audio.duration));
       usePlayerStore.getState().setCurrentTime(this.audio.currentTime);
+    }
+  }
+  
+  public async next(): Promise<void> {
+    const state = usePlayerStore.getState();
+    const { queue, currentIndex } = state;
+    const nextIndex = currentIndex + 1;
+    if (queue && queue.length > 0 && nextIndex < queue.length) {
+      const nextTrack = queue[nextIndex];
+      state.setCurrentIndex(nextIndex);
+      state.setCurrentTrack(nextTrack);
+      await this.playTrack(nextTrack);
+    } else {
+      state.setPlaying(false);
     }
   }
 

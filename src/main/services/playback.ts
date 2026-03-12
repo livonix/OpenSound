@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
-import { StreamService } from './streamer.js';
-import { Track, PlaybackState } from '@shared/types';
+import { StreamService } from './streamer';
+import { Track, PlaybackState } from '../../shared/types';
 
 export class PlaybackService extends EventEmitter {
   private streamService: StreamService;
@@ -28,8 +28,8 @@ export class PlaybackService extends EventEmitter {
       this.duration = track.duration_ms / 1000; // Convert to seconds
       this.currentTime = 0;
 
-      // Start the stream
-      const stream = await this.streamService.getStreamWithBuffer(track);
+      // Start the stream - use fast streaming for better performance
+      const stream = await this.streamService.getStreamWithFastBuffer(track);
       
       // Emit playback state change
       this.isPlaying = true;

@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import { Track, Artist, Album, SearchResult } from '@shared/types';
+import { Track, Artist, Album, SearchResult } from '../../shared/types';
 
 export class SpotifyService {
   private client: AxiosInstance = {} as AxiosInstance;

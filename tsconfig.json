@@ -13,6 +13,6 @@
     "declaration": true,
     "outDir": "./dist"
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "src/renderer"]
+  "include": ["src/shared/**/*"],
+  "exclude": ["node_modules", "dist", "src/main", "src/renderer"]
 }

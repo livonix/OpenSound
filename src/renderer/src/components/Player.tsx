@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { usePlayerStore } from '../stores/playerStore';
 import { usePlaybackAPI } from '../hooks/useElectronAPI';
+import { audioPlayer } from '../services/audioPlayer';
 
 export function Player() {
   const {
@@ -97,6 +98,14 @@ export function Player() {
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
+  
+  const handleNext = async () => {
+    try {
+      await audioPlayer.next();
+    } catch (error) {
+      console.error('Next track error:', error);
+    }
+  };
 
   const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
   const bufferedPercentage = duration > 0 ? (buffered / duration) * 100 : 0;
@@ -147,7 +156,7 @@ export function Player() {
             {isPlaying ? <Pause size={20} /> : <Play size={20} />}
           </button>
           
-          <button className="text-spotify-gray hover:text-white transition-colors">
+          <button onClick={handleNext} className="text-spotify-gray hover:text-white transition-colors">
             <SkipForward size={18} />
           </button>
           

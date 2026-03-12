@@ -88,6 +88,12 @@ export interface AppConfig {
     youtube: {
         apiKey?: string;
     };
+    lavalink?: {
+        host: string;
+        port: number;
+        password: string;
+        secure?: boolean;
+    };
     cache: {
         maxSize: number;
         ttl: number;
