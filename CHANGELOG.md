@@ -2,6 +2,15 @@
 
 Toutes les modifications notables de ce projet seront documentées dans ce fichier.
 
+## [1.0.2] - 12 mars 2026
+
+### ✨ Nouveautés
+
+- feat: ajouter système de mise à jour automatique et gestion de version (3837378)
+
+
+---
+
 ## [1.0.1] - 12 mars 2026
 
 ### 🎉 Première release!
