@@ -2,6 +2,8 @@ import { spawn, ChildProcess } from 'child_process';
 import { app } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as https from 'https';
+import * as Stream from 'stream';
 
 export class LavalinkLocalService {
   private lavalinkProcess: ChildProcess | null = null;
@@ -11,6 +13,8 @@ export class LavalinkLocalService {
   private isReady: boolean = false;
   private startAttempts: number = 0;
   private readonly maxStartAttempts: number = 3;
+  private readonly lavalinkVersion = '4.1.1';
+  private readonly lavalinkUrl = 'https://github.com/lavalink-devs/Lavalink/releases/download/4.1.1/Lavalink.jar';
 
   constructor() {
     // Nettoyer les processus au démarrage
@@ -40,12 +44,12 @@ export class LavalinkLocalService {
     console.log(`🚀 Démarrage de Lavalink local (tentative ${this.startAttempts}/${this.maxStartAttempts})`);
 
     try {
-      // Chemin vers le JAR Lavalink
-      const jarPath = this.getLavalinkJarPath();
+      // Vérifier si Lavalink.jar existe, sinon le télécharger
+      const jarPath = await this.ensureLavalinkJar();
       
       if (!fs.existsSync(jarPath)) {
-        console.error(`❌ Fichier Lavalink JAR non trouvé: ${jarPath}`);
-        throw new Error('Lavalink JAR not found');
+        console.error(`❌ Impossible d'obtenir Lavalink JAR: ${jarPath}`);
+        throw new Error('Lavalink JAR not available');
       }
 
       // Configuration Lavalink
@@ -108,6 +112,65 @@ export class LavalinkLocalService {
     }
   }
 
+  private async ensureLavalinkJar(): Promise<string> {
+    const jarPath = this.getLavalinkJarPath();
+    
+    if (fs.existsSync(jarPath)) {
+      console.log(`📦 Lavalink JAR déjà présent: ${jarPath}`);
+      return jarPath;
+    }
+
+    console.log(`📥 Téléchargement de Lavalink v${this.lavalinkVersion}...`);
+    
+    try {
+      await this.downloadFile(this.lavalinkUrl, jarPath);
+      console.log(`✅ Lavalink JAR téléchargé: ${jarPath}`);
+      return jarPath;
+    } catch (error) {
+      console.error('❌ Erreur téléchargement Lavalink:', error);
+      throw error;
+    }
+  }
+
+  private downloadFile(url: string, destination: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const file = fs.createWriteStream(destination);
+      
+      https.get(url, (response) => {
+        if (response.statusCode !== 200) {
+          reject(new Error(`HTTP ${response.statusCode}`));
+          return;
+        }
+
+        const totalSize = parseInt(response.headers['content-length'] || '0', 10);
+        let downloadedSize = 0;
+
+        response.pipe(file);
+
+        response.on('data', (chunk) => {
+          downloadedSize += chunk.length;
+          const progress = Math.round((downloadedSize / totalSize) * 100);
+          process.stdout.write(`\r📥 Téléchargement: ${progress}%`);
+        });
+
+        file.on('finish', () => {
+          file.close();
+          console.log('\n✅ Téléchargement terminé');
+          resolve();
+        });
+
+      }).on('error', (error) => {
+        fs.unlink(destination, () => {}); // Supprimer le fichier partiel
+        reject(error);
+      });
+
+      file.on('error', (error) => {
+        fs.unlink(destination, () => {}); // Supprimer le fichier partiel
+        reject(error);
+      });
+    });
+  }
+
   private async waitForReady(): Promise<boolean> {
     const maxWaitTime = 30000; // 30 secondes max
     const checkInterval = 1000; // Vérifier chaque seconde
@@ -135,23 +198,17 @@ export class LavalinkLocalService {
   }
 
   private getLavalinkJarPath(): string {
-    // Chercher le JAR dans plusieurs emplacements possibles
-    const possiblePaths = [
-      path.join(process.resourcesPath, 'lavalink', 'Lavalink.jar'),
-      path.join(__dirname, '../../assets/lavalink/Lavalink.jar'),
-      path.join(__dirname, '../../../assets/lavalink/Lavalink.jar'),
-      path.join(process.cwd(), 'assets/lavalink/Lavalink.jar'),
-      path.join(process.cwd(), 'Lavalink.jar')
-    ];
+    // Utiliser le dossier temporaire de l'application
+    const userDataPath = app.getPath('userData');
+    const lavalinkDir = path.join(userDataPath, 'lavalink');
+    const jarPath = path.join(lavalinkDir, 'Lavalink.jar');
 
-    for (const jarPath of possiblePaths) {
-      if (fs.existsSync(jarPath)) {
-        console.log(`📦 JAR Lavalink trouvé: ${jarPath}`);
-        return jarPath;
-      }
+    // Créer le dossier si nécessaire
+    if (!fs.existsSync(lavalinkDir)) {
+      fs.mkdirSync(lavalinkDir, { recursive: true });
     }
 
-    throw new Error('Lavalink JAR non trouvé');
+    return jarPath;
   }
 
   private async createLavalinkConfig(): Promise<string> {
