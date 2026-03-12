@@ -39,8 +39,9 @@ export class LavalinkService {
   private readonly youtubeService: YouTubeService;
 
   constructor(config: AppConfig['lavalink']) {
-    const host = config?.host || 'localhost';
-    const port = config?.port || 2333;
+    // Forcer localhost pour le mode intégré
+    const host = 'localhost';
+    const port = 2333;
     this.password = config?.password || 'youshallnotpass';
     this.secure = !!config?.secure;
     this.baseUrl = `${this.secure ? 'https' : 'http'}://${host}:${port}/v4`;
