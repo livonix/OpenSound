@@ -13,7 +13,8 @@
     "build:renderer": "cd src/renderer && npm run build",
     "build:main": "tsc -p tsconfig.shared.json && tsc -p tsconfig.main.json && tsc -p src/main/preload-tsconfig.json",
     "pack": "npm run build && electron-builder --dir",
-    "dist": "npm run build && electron-builder",
+    "dist": "powershell -Command \"Start-Process cmd -ArgumentList '/c cd /d %CD% && npm run build && npx electron-builder --win --x64 --dir --publish=never' -Verb RunAs\"",
+    "dist:simple": "npm run build && electron-builder --win --x64 --dir --publish=never",
     "postinstall": "cd src/renderer && npm install",
     "version:patch": "node scripts/version.js patch",
     "version:minor": "node scripts/version.js minor",
@@ -45,7 +46,7 @@
     "axios": "latest",
     "dotenv": "latest",
     "electron-log": "latest",
-    "electron-updater": "latest",
+    "electron-updater": "^4.0.0",
     "fluent-ffmpeg": "latest",
     "play-dl": "^1.9.7",
     "uuid": "latest",
@@ -61,8 +62,14 @@
     },
     "files": [
       "dist/**/*",
-      "assets/**/*",
-      "node_modules/**/*"
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "src/main/services",
+        "to": "services"
+      }
     ],
     "publish": {
       "provider": "github",
