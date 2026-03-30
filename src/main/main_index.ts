@@ -159,20 +159,18 @@ class OpenSoundApp {
 
     console.log('OpenSound app initialization complete');
     
-    // Create and show window
+    // Wait for app to be ready before creating window
+    await app.whenReady();
+    console.log('Electron app ready, creating window...');
+    this.setupMenu();
     this.createWindow();
 
-    app.whenReady().then(() => {
-      console.log('Electron app ready, creating window...');
-      this.setupMenu();
-
-      app.on('activate', () => {
-        // On macOS, re-create window when dock icon is clicked
-        if (BrowserWindow.getAllWindows().length === 0) {
-          console.log('Creating new window on activate');
-          this.createWindow();
-        }
-      });
+    app.on('activate', () => {
+      // On macOS, re-create window when dock icon is clicked
+      if (BrowserWindow.getAllWindows().length === 0) {
+        console.log('Creating new window on activate');
+        this.createWindow();
+      }
     });
 
     // Quit when all windows are closed
