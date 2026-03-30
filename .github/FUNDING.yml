@@ -1,6 +1,6 @@
 # These are supported funding model platforms
 
-github: [livonix]
+github:
 patreon: livonix
 open_collective: livonix
 ko_fi: livonix
@@ -12,6 +12,7 @@ lfx_crowdfunding:
 polar:
 buy_me_a_coffee: livonix
 thanks_dev:
-custom: 
-  - https://github.com/sponsors/livonix
+custom:
   - https://buymeacoffee.com/livonix
+  - https://ko-fi.com/livonix
+  - https://patreon.com/livonix
