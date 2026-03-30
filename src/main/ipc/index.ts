@@ -110,7 +110,7 @@ export function setupIpcHandlers(): void {
     try {
       console.log('Getting YouTube stream URL for:', videoId);
       const streamInfo = await youtubeStreamingService.getStreamUrl(videoId);
-      return streamInfo;
+      return streamInfo.streamUrl; // Return only the URL string
     } catch (error) {
       console.error('YouTube stream URL error:', error);
       throw error;

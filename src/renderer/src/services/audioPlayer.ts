@@ -111,7 +111,8 @@ export class AudioPlayerService {
       console.log('Audio URL type:', typeof audioUrl);
       console.log('Audio URL length:', audioUrl?.length);
       
-      if (!audioUrl || audioUrl === '' || audioUrl.startsWith('http://localhost')) {
+      // Validate audio URL
+      if (!audioUrl || typeof audioUrl !== 'string' || audioUrl === '' || audioUrl.startsWith('http://localhost')) {
         console.error('Invalid audio URL detected:', audioUrl);
         throw new Error('Invalid or empty audio URL received');
       }
