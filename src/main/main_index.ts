@@ -8,20 +8,20 @@ config();
 import { setupIpcHandlers } from './ipc/index';
 import { ConfigService } from './services/config';
 import { UpdaterService } from './services/updater';
-import { LavalinkLocalService } from './services/lavalinkLocal';
+// Removed LavalinkLocalService - now using YouTube streaming
 
 class OpenSoundApp {
   private mainWindow: BrowserWindow | null = null;
   private configService: ConfigService;
   private dirPath: string;
   private updaterService: UpdaterService;
-  private lavalinkLocalService: LavalinkLocalService;
+  // Removed lavalinkLocalService - now using YouTube streaming
 
   constructor(dirPath?: string) {
     this.configService = new ConfigService();
     this.dirPath = dirPath || __dirname;
     this.updaterService = new UpdaterService();
-    this.lavalinkLocalService = new LavalinkLocalService();
+    // Removed LavalinkLocal initialization - now using YouTube streaming
   }
 
   private createWindow(): void {
@@ -150,16 +150,8 @@ class OpenSoundApp {
   public async initialize(): Promise<void> {
     console.log('Initializing OpenSound app...');
     
-    // Démarrer Lavalink local en premier
-    console.log('🚀 Démarrage de Lavalink local...');
-    const lavalinkStarted = await this.lavalinkLocalService.startLavalink();
-    
-    if (!lavalinkStarted) {
-      console.error('❌ Impossible de démarrer Lavalink local');
-      // Continuer quand même pour permettre le débogage
-    } else {
-      console.log('✅ Lavalink local démarré avec succès');
-    }
+    // Removed Lavalink local startup - now using YouTube streaming
+    console.log('🚀 YouTube streaming service ready (no Java required)');
     
     // Initialize config
     await this.configService.initialize();
@@ -188,12 +180,8 @@ class OpenSoundApp {
     app.on('window-all-closed', () => {
       console.log('All windows closed');
       
-      // Arrêter Lavalink local
-      this.lavalinkLocalService.stopLavalink().then(() => {
-        console.log('Lavalink local arrêté');
-      }).catch((error) => {
-        console.error('Erreur arrêt Lavalink:', error);
-      });
+      // Removed Lavalink local cleanup - now using YouTube streaming
+      console.log('YouTube streaming service stopped');
       
       if (process.platform !== 'darwin') {
         app.quit();
@@ -201,8 +189,8 @@ class OpenSoundApp {
     });
 
     app.on('before-quit', async () => {
-      console.log('Application closing, stopping Lavalink...');
-      await this.lavalinkLocalService.stopLavalink();
+      console.log('Application closing, YouTube streaming service cleanup...');
+      // Removed Lavalink cleanup - now using YouTube streaming
     });
 
     app.on('web-contents-created', (_, contents: any) => {

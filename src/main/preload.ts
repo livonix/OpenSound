@@ -56,7 +56,7 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke('spotify:get-artist', id),
 
   searchYouTube: (query: string) => 
-    ipcRenderer.invoke('lavalink:search', query),
+    ipcRenderer.invoke('youtube:search', query),
   
   getStreamInfo: (videoId: string) => 
     ipcRenderer.invoke('youtube:get-stream-info', videoId),
@@ -65,7 +65,7 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke('youtube:get-audio-stream', videoId),
   
   getAudioUrl: (videoId: string) => 
-    ipcRenderer.invoke('lavalink:get-audio-url', videoId),
+    ipcRenderer.invoke('youtube:get-stream-url', videoId),
 
   playTrack: (track: any) => 
     ipcRenderer.invoke('playback:play', track),

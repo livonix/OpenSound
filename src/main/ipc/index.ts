@@ -2,7 +2,7 @@ import { ipcMain, shell, app } from 'electron';
 import { ConfigService } from '../services/config';
 import { SpotifyService } from '../services/spotify';
 import { YouTubeService } from '../services/youtube';
-import { LavalinkService } from '../services/lavalink';
+import { YouTubeStreamingService } from '../services/youtubeStreaming';
 import { StreamService } from '../services/streamer';
 import { CacheService } from '../services/cache';
 import { PlaybackService } from '../services/playback';
@@ -13,7 +13,7 @@ import { Track } from '../../shared/types';
 let configService: ConfigService;
 let spotifyService: SpotifyService;
 let youtubeService: YouTubeService;
-let lavalinkService: LavalinkService;
+let youtubeStreamingService: YouTubeStreamingService;
 let streamService: StreamService;
 let cacheService: CacheService;
 let playbackService: PlaybackService;
@@ -27,7 +27,7 @@ export function setupIpcHandlers(): void {
   
   spotifyService = new SpotifyService(config.spotify.clientId, config.spotify.clientSecret);
   youtubeService = new YouTubeService();
-  lavalinkService = new LavalinkService(config.lavalink);
+  youtubeStreamingService = new YouTubeStreamingService();
   streamService = new StreamService();
   cacheService = new CacheService(config.cache);
   playbackService = new PlaybackService(streamService);
@@ -71,49 +71,28 @@ export function setupIpcHandlers(): void {
     }
   });
 
-  // YouTube API handlers
-  ipcMain.handle('lavalink:search', async (_, query: string) => {
+  // YouTube streaming handlers
+  ipcMain.handle('youtube:search', async (_, query: string) => {
     try {
-      console.log('IPC: Lavalink search called with query:', query);
+      console.log('IPC: YouTube search called with query:', query);
       
-      const variants = Array.from(new Set([
-        query,
-        query.replace(/audio/gi, '').trim(),
-        query.replace(/-/g, ' ').trim(),
-        query.replace(/\s+/g, ' ').trim()
-      ])).filter(q => q.length > 0);
-
-      console.log('IPC: Search variants:', variants);
-
-      let tracks: any[] = [];
-      for (const q of variants) {
-        console.log('IPC: Trying variant:', q);
-        tracks = await lavalinkService.loadTracks(q);
-        console.log('IPC: Variant returned', tracks.length, 'tracks');
-        if (tracks && tracks.length > 0) break;
-      }
-
-      console.log('IPC: Final tracks count:', tracks.length);
+      const tracks = await youtubeStreamingService.searchTracks(query);
+      console.log('IPC: YouTube search returned', tracks.length, 'tracks');
       
-      if (!tracks || !Array.isArray(tracks)) {
-        console.log('IPC: Invalid tracks array, returning empty result');
-        return [];
-      }
-      
-      const mappedTracks = tracks.map(t => ({
-        id: t.info.identifier, // Keep identifier for lookup
-        title: t.info.title,
-        channel: t.info.author,
-        duration: t.info.length?.toString() || '',
-        url: t.info.uri,
-        streamUrl: t.info.streamUrl || t.info.uri, // Use streamUrl if available
-        thumbnail: t.info.sourceName === 'youtube' ? `https://i.ytimg.com/vi/${t.info.identifier}/hqdefault.jpg` : `https://i.ytimg.com/vi/default.jpg`
+      // Convert to renderer-friendly format
+      const mappedTracks = tracks.map(track => ({
+        id: track.id,
+        title: track.name,
+        artist: track.artists[0]?.name || 'Unknown',
+        duration: track.duration_ms,
+        thumbnail: track.album.images[0]?.url || '',
+        url: track.uri
       }));
       
-      console.log('IPC: Mapped tracks:', mappedTracks.length);
+      console.log('IPC: Mapped YouTube tracks:', mappedTracks.length);
       return mappedTracks;
     } catch (error) {
-      console.error('Lavalink search error:', error);
+      console.error('YouTube search error:', error);
       throw error;
     }
   });
@@ -127,13 +106,13 @@ export function setupIpcHandlers(): void {
     }
   });
 
-  ipcMain.handle('lavalink:get-audio-url', async (_, videoId: string) => {
+  ipcMain.handle('youtube:get-stream-url', async (_, videoId: string) => {
     try {
-      console.log('Getting Lavalink audio URL for:', videoId);
-      const sourceUrl = await lavalinkService.getAudioUrlFromVideoId(videoId);
-      return sourceUrl;
+      console.log('Getting YouTube stream URL for:', videoId);
+      const streamInfo = await youtubeStreamingService.getStreamUrl(videoId);
+      return streamInfo;
     } catch (error) {
-      console.error('Lavalink audio URL error:', error);
+      console.error('YouTube stream URL error:', error);
       throw error;
     }
   });

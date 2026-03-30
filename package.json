@@ -47,8 +47,11 @@
     "electron-log": "latest",
     "electron-updater": "latest",
     "fluent-ffmpeg": "latest",
+    "play-dl": "^1.9.7",
     "uuid": "latest",
-    "ytdl-core": "latest"
+    "yt-dlp-exec": "^1.0.2",
+    "ytdl-core": "^4.11.5",
+    "ytdlp-nodejs": "^3.4.4"
   },
   "build": {
     "appId": "com.opensound.app",

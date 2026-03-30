@@ -19,13 +19,8 @@ export class ConfigService {
         clientSecret: process.env.SPOTIFY_CLIENT_SECRET || ''
       },
       youtube: {
-        apiKey: process.env.YOUTUBE_API_KEY
-      },
-      lavalink: {
-        host: process.env.LAVALINK_HOST || 'localhost',
-        port: parseInt(process.env.LAVALINK_PORT || '2333', 10),
-        password: process.env.LAVALINK_PASSWORD || 'youshallnotpass',
-        secure: (process.env.LAVALINK_SECURE || 'false').toLowerCase() === 'true'
+        apiKey: process.env.YOUTUBE_API_KEY,
+        streamingEnabled: true
       },
       cache: {
         maxSize: 100 * 1024 * 1024, // 100MB
@@ -87,7 +82,7 @@ export class ConfigService {
 
   public updateYouTubeApiKey(apiKey: string): Promise<void> {
     return this.updateConfig({
-      youtube: { apiKey }
+      youtube: { apiKey, streamingEnabled: true }
     });
   }
 
