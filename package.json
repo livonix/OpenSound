@@ -1,6 +1,6 @@
 {
   "name": "opensound",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Desktop music streaming app with Spotify metadata and YouTube audio",
   "main": "dist/main/index.js",
   "homepage": "./",
