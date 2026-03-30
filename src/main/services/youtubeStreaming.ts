@@ -434,7 +434,7 @@ export class YouTubeStreamingService {
       
       const result = await exec(`https://www.youtube.com/watch?v=${videoId}`, {
         format: 'bestaudio/best',
-        geturl: true,
+        getUrl: true,
         noWarnings: true,
         quiet: true
       });
