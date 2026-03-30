@@ -4,6 +4,7 @@
     "module": "commonjs",
     "lib": ["ES2020"],
     "moduleResolution": "node",
+    "rootDir": "./src/main",
     "outDir": "dist/main",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -15,9 +16,8 @@
     "declaration": false,
     "sourceMap": true,
     "noEmit": false,
-    "baseUrl": "./",
     "paths": {
-      "@shared/*": ["src/shared/*"]
+      "@shared/*": ["./src/shared/*"]
     }
   },
   "include": [
