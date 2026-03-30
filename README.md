@@ -1,9 +1,9 @@
 # 🎵 OpenSound - Clone Spotify Open Source
 
-![License](https://img.shields.io/github/license/yourusername/opensound?style=for-the-badge)
-![Version](https://img.shields.io/github/v/release/yourusername/opensound?style=for-the-badge)
-![Stars](https://img.shields.io/github/stars/yourusername/opensound?style=for-the-badge)
-![Forks](https://img.shields.io/github/forks/yourusername/opensound?style=for-the-badge)
+![License](https://img.shields.io/github/license/livonix/OpenSound?style=for-the-badge)
+![Version](https://img.shields.io/github/v/release/livonix/OpenSound?style=for-the-badge)
+![Stars](https://img.shields.io/github/stars/livonix/OpenSound?style=for-the-badge)
+![Forks](https://img.shields.io/github/forks/livonix/OpenSound?style=for-the-badge)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white&style=for-the-badge)
 ![Electron](https://img.shields.io/badge/Electron-47848F?logo=electron&logoColor=white&style=for-the-badge)
 ![React](https://img.shields.io/badge/React-61DAFB?logo=react&logoColor=black&style=for-the-badge)
@@ -67,7 +67,7 @@ OpenSound/
 
 ```bash
 # Cloner le projet
-git clone https://github.com/yourusername/opensound.git
+git clone https://github.com/livonix/OpenSound.git
 cd opensound
 
 # Installer les dépendances
@@ -179,6 +179,6 @@ Si OpenSound vous plaît, n’hésitez pas à mettre une ⭐ sur le repository !
 ---
 
 **Liens utiles**
-- [Signaler un bug](https://github.com/yourusername/opensound/issues)
-- [Discussions](https://github.com/yourusername/opensound/discussions)
-- [Releases](https://github.com/yourusername/opensound/releases)
+- [Signaler un bug](https://github.com/livonix/OpenSound/issues)
+- [Discussions](https://github.com/livonix/OpenSound/discussions)
+- [Releases](https://github.com/livonix/OpenSound/releases)
