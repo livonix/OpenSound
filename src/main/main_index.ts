@@ -8,20 +8,17 @@ config();
 import { setupIpcHandlers } from './ipc/index';
 import { ConfigService } from './services/config';
 import { UpdaterService } from './services/updater';
-// Removed LavalinkLocalService - now using YouTube streaming
 
 class OpenSoundApp {
   private mainWindow: BrowserWindow | null = null;
   private configService: ConfigService;
   private dirPath: string;
   private updaterService: UpdaterService;
-  // Removed lavalinkLocalService - now using YouTube streaming
 
   constructor(dirPath?: string) {
     this.configService = new ConfigService();
     this.dirPath = dirPath || __dirname;
     this.updaterService = new UpdaterService();
-    // Removed LavalinkLocal initialization - now using YouTube streaming
   }
 
   private createWindow(): void {
@@ -150,7 +147,6 @@ class OpenSoundApp {
   public async initialize(): Promise<void> {
     console.log('Initializing OpenSound app...');
     
-    // Removed Lavalink local startup - now using YouTube streaming
     console.log('🚀 YouTube streaming service ready (no Java required)');
     
     // Initialize config
@@ -161,10 +157,13 @@ class OpenSoundApp {
     setupIpcHandlers();
     console.log('IPC handlers set up');
 
-    // This method will be called when Electron has finished initialization
+    console.log('OpenSound app initialization complete');
+    
+    // Create and show window
+    this.createWindow();
+
     app.whenReady().then(() => {
       console.log('Electron app ready, creating window...');
-      this.createWindow();
       this.setupMenu();
 
       app.on('activate', () => {
@@ -179,8 +178,6 @@ class OpenSoundApp {
     // Quit when all windows are closed
     app.on('window-all-closed', () => {
       console.log('All windows closed');
-      
-      // Removed Lavalink local cleanup - now using YouTube streaming
       console.log('YouTube streaming service stopped');
       
       if (process.platform !== 'darwin') {
@@ -190,7 +187,6 @@ class OpenSoundApp {
 
     app.on('before-quit', async () => {
       console.log('Application closing, YouTube streaming service cleanup...');
-      // Removed Lavalink cleanup - now using YouTube streaming
     });
 
     app.on('web-contents-created', (_, contents: any) => {

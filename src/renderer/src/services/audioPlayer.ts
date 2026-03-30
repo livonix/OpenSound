@@ -79,34 +79,33 @@ export class AudioPlayerService {
       this.currentTrack = track;
       usePlayerStore.getState().setCurrentTrack(track);
 
-      // Get YouTube audio URL using Electron API (Lavalink v4)
+      // Get YouTube audio URL using Electron API (yt-dlp)
       const searchQuery = `${track.artists[0]?.name || ''} ${track.name}`;
-      console.log('Searching Lavalink for:', searchQuery);
-      const tracks = await electronAPI.searchYouTube(searchQuery); // Utilise searchYouTube qui pointe vers Lavalink
+      console.log('Searching YouTube for:', searchQuery);
+      const tracks = await electronAPI.searchYouTube(searchQuery);
       
-      console.log('Lavalink tracks found:', tracks.length);
-      console.log('Lavalink tracks data:', tracks);
+      console.log('YouTube tracks found:', tracks.length);
+      console.log('YouTube tracks data:', tracks);
       
       let finalTracks = tracks;
       
       if (tracks.length === 0) {
         // Try a simpler search without artist name
-        console.log('Trying simpler Lavalink search...');
+        console.log('Trying simpler YouTube search...');
         const simpleQuery = track.name;
         const simpleTracks = await electronAPI.searchYouTube(simpleQuery);
-        console.log('Simple Lavalink search found:', simpleTracks.length);
+        console.log('Simple YouTube search found:', simpleTracks.length);
         
         if (simpleTracks.length === 0) {
           throw new Error(`No tracks found for "${searchQuery}" or "${simpleQuery}"`);
         }
         
-        // Use simple search results
         finalTracks = simpleTracks;
       }
 
       // Get audio URL for the first track
-      console.log('Getting Lavalink audio URL for track:', finalTracks[0].id);
-      const audioUrl = await electronAPI.getAudioUrl(finalTracks[0].id); // Utilise getAudioUrl qui pointe vers Lavalink
+      console.log('Getting YouTube audio URL for track:', finalTracks[0].id);
+      const audioUrl = await electronAPI.getAudioUrl(finalTracks[0].id);
       
       console.log('Audio URL received:', audioUrl);
       console.log('Audio URL type:', typeof audioUrl);
