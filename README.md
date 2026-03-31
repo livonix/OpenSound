@@ -13,7 +13,7 @@
 
 > ⚠️ **Avertissement** : Cette application ne stocke ni n’héberge aucun contenu musical. Elle redirige uniquement vers des flux publics disponibles sur YouTube. Respectez les droits d’auteur.
 
-![OpenSound Screenshot](https://via.placeholder.com/1200x600/1DB954/000000?text=OpenSound+Interface)
+![OpenSound Screenshot](https://i.ibb.co/zT7VJKYp/opensound.jpg)
 
 ---
 
