@@ -52,7 +52,6 @@
     "play-dl": "latest",
     "uuid": "latest",
     "yt-dlp-exec": "latest",
-    "ytdl-core": "latest",
     "ytdlp-nodejs": "latest"
   },
   "build": {

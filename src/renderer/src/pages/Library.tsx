@@ -73,12 +73,33 @@ export function Library() {
     try {
       setIsLoading(true);
       console.log('🔄 Loading library content...');
+      console.log('📡 API state:', { isReady: !!api, hasGetPlaylists: !!(api?.getPlaylists) });
+      
       const userPlaylists = await getPlaylists();
       console.log('📝 Loaded playlists:', userPlaylists);
       console.log('📝 Playlists count:', userPlaylists?.length || 0);
+      console.log('📝 Playlists type:', typeof userPlaylists);
+      console.log('📝 Is array:', Array.isArray(userPlaylists));
+      
       setPlaylists(userPlaylists || []);
+      
+      // If playlists are empty but we expect some, try to refresh after a delay
+      if ((!userPlaylists || userPlaylists.length === 0) && api) {
+        console.log('⚠️ No playlists loaded, will retry in 2 seconds...');
+        setTimeout(() => {
+          console.log('🔄 Retrying playlist load...');
+          getPlaylists().then((retryPlaylists: Playlist[]) => {
+            console.log('📝 Retry playlists:', retryPlaylists);
+            if (retryPlaylists && retryPlaylists.length > 0) {
+              setPlaylists(retryPlaylists);
+            }
+          }).catch((err: any) => {
+            console.error('❌ Retry failed:', err);
+          });
+        }, 2000);
+      }
     } catch (error) {
-      console.error('Failed to load library:', error);
+      console.error('❌ Failed to load library:', error);
       setPlaylists([]);
     } finally {
       setIsLoading(false);
@@ -384,7 +405,7 @@ export function Library() {
       <div>
         {activeTab === 'playlists' && (
           <div>
-            {playlists.length > 0 ? (
+            {!isLoading && playlists.length > 0 ? (
               <div className="grid grid-cols-4 gap-4">
                 <LikedSongsCard />
                 {playlists.map((playlist) => (
@@ -393,27 +414,46 @@ export function Library() {
               </div>
             ) : (
               <div className="text-center py-16">
-                <div className="mb-8">
-                  <div className="w-32 h-32 bg-spotify-highlight rounded-full flex items-center justify-center mx-auto mb-6 group hover:bg-spotify-green transition-colors cursor-pointer">
-                    <Plus size={48} className="text-spotify-gray group-hover:text-white transition-colors" />
+                {isLoading ? (
+                  <div className="py-16">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-spotify-green mx-auto mb-4"></div>
+                    <p className="text-spotify-gray">Loading playlists...</p>
                   </div>
-                </div>
-                <h3 className="text-2xl font-bold mb-3">Create your first playlist</h3>
-                <p className="text-spotify-gray mb-8 max-w-md mx-auto">
-                  It's easy, we'll help you build the perfect playlist with your favorite songs
-                </p>
-                <button 
-                  onClick={() => setShowCreatePlaylist(true)}
-                  className="btn-primary flex items-center gap-2 mx-auto text-lg px-8 py-3"
-                >
-                  <Plus size={20} />
-                  Create Playlist
-                </button>
+                ) : (
+                  <>
+                    <div className="mb-8">
+                      <div className="w-32 h-32 bg-spotify-highlight rounded-full flex items-center justify-center mx-auto mb-6 group hover:bg-spotify-green transition-colors cursor-pointer">
+                        <Plus size={48} className="text-spotify-gray group-hover:text-white transition-colors" />
+                      </div>
+                    </div>
+                    <h3 className="text-2xl font-bold mb-3">Create your first playlist</h3>
+                    <p className="text-spotify-gray mb-8 max-w-md mx-auto">
+                      It's easy, we'll help you build the perfect playlist with your favorite songs
+                    </p>
+                    <button 
+                      onClick={() => setShowCreatePlaylist(true)}
+                      className="btn-primary flex items-center gap-2 mx-auto text-lg px-8 py-3"
+                    >
+                      <Plus size={20} />
+                      Create Playlist
+                    </button>
+                  </>
+                )}
                 
                 {/* Debug info */}
                 <div className="mt-4 text-xs text-spotify-gray">
                   Debug: playlists.length={playlists.length}, activeTab={activeTab}, isLoading={isLoading.toString()}
                 </div>
+                
+                {/* Refresh button if playlists are empty but shouldn't be */}
+                {!isLoading && playlists.length === 0 && (
+                  <button 
+                    onClick={loadLibraryContent}
+                    className="mt-4 text-sm text-spotify-gray hover:text-white transition-colors underline"
+                  >
+                    Refresh playlists
+                  </button>
+                )}
               </div>
             )}
           </div>

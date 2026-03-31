@@ -1,5 +1,4 @@
 import { Track, Artist, Album, YouTubeVideo, StreamInfo, SearchResult } from '@shared/types';
-import ytdl from 'ytdl-core';
 import { exec } from 'yt-dlp-exec';
 
 export class YouTubeStreamingService {
@@ -61,7 +60,7 @@ export class YouTubeStreamingService {
   }
 
   /**
-   * Get direct streaming URL for a YouTube video using ytdl-core with yt-dlp fallback
+   * Get direct streaming URL for a YouTube video using yt-dlp
    */
   public async getStreamUrl(videoId: string): Promise<StreamInfo> {
     // Extract real YouTube video ID (remove youtube_ prefix)
@@ -82,42 +81,16 @@ export class YouTubeStreamingService {
     try {
       console.log('Getting stream URL for video ID:', realVideoId);
       
-      // Try ytdl-core first
-      const info = await ytdl.getInfo(`https://www.youtube.com/watch?v=${realVideoId}`);
-      
-      // Find the best audio-only format
-      const audioFormat = ytdl.chooseFormat(info.formats, { quality: 'highestaudio', filter: 'audioonly' });
-      
-      if (!audioFormat || !audioFormat.url) {
-        throw new Error('No audio format available for this video');
-      }
-
-      // Cache the URL
-      this.streamUrlCache.set(realVideoId, { url: audioFormat.url, timestamp: Date.now() });
-      
-      console.log('Stream URL obtained for video:', realVideoId);
-      
-      return {
-        videoId: realVideoId,
-        streamUrl: audioFormat.url,
-        format: audioFormat.container || 'mp4',
-        bitrate: audioFormat.audioBitrate || 128
-      };
-    } catch (ytdlError: any) {
-      console.log('ytdl-core failed, trying yt-dlp fallback for streaming:', ytdlError.message);
-      
-      // Fallback to yt-dlp for streaming URL
-      try {
-        return await this.getStreamUrlWithYtdlp(realVideoId);
-      } catch (ytdlpError: any) {
-        console.error('Both ytdl-core and yt-dlp failed for video:', realVideoId, ytdlpError.message);
-        throw new Error(`Failed to get stream URL for video ID: ${realVideoId}`);
-      }
+      // Use yt-dlp directly for streaming URL
+      return await this.getStreamUrlWithYtdlp(realVideoId);
+    } catch (error: any) {
+      console.error('yt-dlp failed for video:', realVideoId, error.message);
+      throw new Error(`Failed to get stream URL for video ID: ${realVideoId}`);
     }
   }
 
   /**
-   * Get streaming URL using yt-dlp as fallback
+   * Get streaming URL using yt-dlp
    */
   private async getStreamUrlWithYtdlp(videoId: string): Promise<StreamInfo> {
     try {
@@ -201,19 +174,25 @@ export class YouTubeStreamingService {
   }
 
   /**
-   * Get video info from YouTube video ID
+   * Get video info from YouTube video ID using yt-dlp
    */
   public async getVideoInfo(videoId: string): Promise<YouTubeVideo> {
     try {
-      const info = await ytdl.getInfo(`https://www.youtube.com/watch?v=${videoId}`);
+      const result = await exec(`https://www.youtube.com/watch?v=${videoId}`, {
+        dumpSingleJson: true,
+        noWarnings: true,
+        quiet: true
+      });
+
+      const data = JSON.parse(result.stdout);
       
       return {
-        id: info.videoDetails.videoId,
-        title: info.videoDetails.title,
-        channel: info.videoDetails.author.name,
-        duration: this.formatDuration(parseInt(info.videoDetails.lengthSeconds)),
-        url: info.videoDetails.video_url,
-        thumbnail: info.videoDetails.thumbnails[0]?.url || ''
+        id: data.id,
+        title: data.title,
+        channel: data.uploader || data.channel || 'Unknown',
+        duration: this.formatDuration(data.duration || 0),
+        url: data.webpage_url,
+        thumbnail: data.thumbnail || ''
       };
     } catch (error: any) {
       console.error('Failed to get video info for:', videoId, error);
