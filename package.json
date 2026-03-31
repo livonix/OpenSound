@@ -37,23 +37,23 @@
     "@types/node": "latest",
     "@types/uuid": "latest",
     "concurrently": "latest",
-    "electron": "^41.1.0",
-    "electron-builder": "^26.8.1",
+    "electron": "latest",
+    "electron-builder": "latest",
     "typescript": "latest",
     "wait-on": "latest"
   },
   "dependencies": {
     "axios": "latest",
-    "discord-rpc": "^4.0.1",
+    "discord-rpc": "latest",
     "dotenv": "latest",
     "electron-log": "latest",
-    "electron-updater": "^4.0.0",
+    "electron-updater": "latest",
     "fluent-ffmpeg": "latest",
-    "play-dl": "^1.9.7",
+    "play-dl": "latest",
     "uuid": "latest",
-    "yt-dlp-exec": "^1.0.2",
-    "ytdl-core": "^4.11.5",
-    "ytdlp-nodejs": "^3.4.4"
+    "yt-dlp-exec": "latest",
+    "ytdl-core": "latest",
+    "ytdlp-nodejs": "latest"
   },
   "build": {
     "appId": "com.opensound.app",
