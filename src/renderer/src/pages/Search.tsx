@@ -4,7 +4,8 @@ import { useSearchStore } from '../stores/searchStore';
 import { usePlayerStore } from '../stores/playerStore';
 import { audioPlayer } from '../services/audioPlayer';
 import { HeartButtonWrapper } from '../components/HeartButtonWrapper';
-import { Track } from '../../../shared/types';
+import { FollowButton } from '../components/FollowButton';
+import { Track, Artist } from '../../../shared/types';
 
 export function Search() {
   const [searchInput, setSearchInput] = useState('');

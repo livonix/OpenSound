@@ -23,6 +23,8 @@ export class PlaylistService {
   private loadPlaylistsFromDisk(): void {
     try {
       const files = fs.readdirSync(this.playlistsPath);
+      console.log('📁 PlaylistService: Found', files.length, 'files in playlists directory');
+      
       for (const file of files) {
         if (file.endsWith('.json')) {
           const filePath = path.join(this.playlistsPath, file);
@@ -34,10 +36,13 @@ export class PlaylistService {
           playlist.updatedAt = new Date(playlist.updatedAt);
           
           this.playlists.set(playlist.id, playlist);
+          console.log('📝 PlaylistService: Loaded playlist:', playlist.name, 'with', playlist.tracks.length, 'tracks');
         }
       }
+      
+      console.log('📝 PlaylistService: Total playlists loaded:', this.playlists.size);
     } catch (error) {
-      console.error('Failed to load playlists from disk:', error);
+      console.error('❌ PlaylistService: Failed to load playlists from disk:', error);
     }
   }
 
@@ -172,15 +177,21 @@ export class PlaylistService {
     return this.playlists.get(id) || null;
   }
 
-  public getAllPlaylists(): Playlist[] {
-    return Array.from(this.playlists.values())
+  public async getAllPlaylists(): Promise<Playlist[]> {
+    const playlists = Array.from(this.playlists.values())
       .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+    
+    console.log('📝 PlaylistService: getAllPlaylists() returning', playlists.length, 'playlists');
+    console.log('📝 PlaylistService: playlists:', playlists.map(p => ({ id: p.id, name: p.name, tracks: p.tracks.length })));
+    
+    return playlists;
   }
 
-  public searchPlaylists(query: string): Playlist[] {
+  public async searchPlaylists(query: string): Promise<Playlist[]> {
     const searchTerm = query.toLowerCase();
+    const allPlaylists = await this.getAllPlaylists();
     
-    return this.getAllPlaylists().filter(playlist => 
+    return allPlaylists.filter((playlist: Playlist) => 
       playlist.name.toLowerCase().includes(searchTerm) ||
       (playlist.description && playlist.description.toLowerCase().includes(searchTerm))
     );

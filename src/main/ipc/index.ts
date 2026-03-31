@@ -9,7 +9,8 @@ import { PlaybackService } from '../services/playback';
 import { PlaylistService } from '../services/playlist';
 import { LikedSongsService } from '../services/likedSongs';
 import { UpdaterService } from '../services/updater';
-import { Track } from '../../shared/types';
+import { followedArtistsService } from '../services/followedArtists';
+import { Track, Artist } from '../../shared/types';
 
 let configService: ConfigService;
 let spotifyService: SpotifyService;
@@ -368,6 +369,79 @@ export function setupIpcHandlers(): void {
       return likedSongsService.addLikedPropertyToTracks(tracks);
     } catch (error) {
       console.error('Add liked property to tracks error:', error);
+      throw error;
+    }
+  });
+
+  // Followed Artists handlers
+  ipcMain.handle('followed-artists:get', async () => {
+    try {
+      return followedArtistsService.getFollowedArtists();
+    } catch (error) {
+      console.error('Get followed artists error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('followed-artists:is-following', async (_, artistId: string) => {
+    try {
+      return followedArtistsService.isFollowing(artistId);
+    } catch (error) {
+      console.error('Check if artist is followed error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('followed-artists:toggle', async (_, artist: Artist) => {
+    try {
+      const isFollowing = followedArtistsService.toggleFollowArtist(artist);
+      return { success: true, isFollowing };
+    } catch (error) {
+      console.error('Toggle follow artist error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('followed-artists:follow', async (_, artist: Artist) => {
+    try {
+      followedArtistsService.followArtist(artist);
+      return { success: true };
+    } catch (error) {
+      console.error('Follow artist error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('followed-artists:unfollow', async (_, artistId: string) => {
+    try {
+      followedArtistsService.unfollowArtist(artistId);
+      return { success: true };
+    } catch (error) {
+      console.error('Unfollow artist error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('followed-artists:get-count', async () => {
+    try {
+      return followedArtistsService.getFollowedArtistsCount();
+    } catch (error) {
+      console.error('Get followed artists count error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('followed-artists:add-followed-property', async (_, artists: Artist[]) => {
+    try {
+      const followedArtists = followedArtistsService.getFollowedArtists();
+      const followedIds = new Set(followedArtists.map(a => a.id));
+      
+      return artists.map(artist => ({
+        ...artist,
+        followed: followedIds.has(artist.id)
+      }));
+    } catch (error) {
+      console.error('Add followed property to artists error:', error);
       throw error;
     }
   });

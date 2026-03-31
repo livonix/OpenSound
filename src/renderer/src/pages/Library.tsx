@@ -1,26 +1,49 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, Play, Heart, Download, MoreHorizontal } from 'lucide-react';
+import { Plus, Play, Heart, Download, MoreHorizontal, ChevronLeft, Pause } from 'lucide-react';
 import { usePlaylistAPI, useElectronAPI } from '../hooks/useElectronAPI';
 import { useLikedSongs } from '../hooks/useLikedSongs';
+import { useFollowedArtists } from '../hooks/useFollowedArtists';
 import { usePlayerStore } from '../stores/playerStore';
 import { audioPlayer } from '../services/audioPlayer';
 import { HeartButtonWrapper } from '../components/HeartButtonWrapper';
-import { Playlist, Track } from '../../../shared/types';
+import { ArtistModal } from '../components/ArtistModal';
+import { Playlist, Track, Artist } from '../../../shared/types';
 
 export function Library() {
   const [searchParams] = useSearchParams();
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [likedSongs, setLikedSongs] = useState<Track[]>([]);
-  const [activeTab, setActiveTab] = useState<'playlists' | 'liked' | 'albums' | 'artists' | 'create'>('playlists');
+  const [activeTab, setActiveTab] = useState<'playlists' | 'liked' | 'albums' | 'artists' | 'create' | 'playlist'>('playlists');
+  const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreatePlaylist, setShowCreatePlaylist] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState('');
+  const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
 
   const { getPlaylists, createPlaylist } = usePlaylistAPI();
   const { api } = useElectronAPI();
   const { likedSongs: likedSongsData, isLoading: likedSongsLoading, refreshLikedSongs } = useLikedSongs();
-  const { setCurrentTrack, setPlaying } = usePlayerStore();
+  const { followedArtists, refreshFollowedArtists } = useFollowedArtists();
+  const { currentTrack, isPlaying, setCurrentTrack, setPlaying } = usePlayerStore();
+
+  // Function to refresh playlists data
+  const refreshPlaylists = async () => {
+    try {
+      const userPlaylists = await getPlaylists();
+      setPlaylists(userPlaylists);
+      
+      // Update selected playlist if it exists
+      if (selectedPlaylist) {
+        const updatedPlaylist = userPlaylists.find((p: Playlist) => p.id === selectedPlaylist.id);
+        if (updatedPlaylist) {
+          setSelectedPlaylist(updatedPlaylist);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to refresh playlists:', error);
+    }
+  };
 
   // Handle URL parameter for tab selection and refresh liked songs
   useEffect(() => {
@@ -40,20 +63,34 @@ export function Library() {
     if (activeTab === 'liked') {
       console.log('🔄 Switching to liked tab, refreshing data...');
       refreshLikedSongs();
+    } else if (activeTab === 'artists') {
+      console.log('🔄 Switching to artists tab, refreshing data...');
+      refreshFollowedArtists();
     }
-  }, [activeTab, refreshLikedSongs]);
+  }, [activeTab, refreshLikedSongs, refreshFollowedArtists]);
 
   const loadLibraryContent = async () => {
     try {
       setIsLoading(true);
+      console.log('🔄 Loading library content...');
       const userPlaylists = await getPlaylists();
-      setPlaylists(userPlaylists);
+      console.log('📝 Loaded playlists:', userPlaylists);
+      console.log('📝 Playlists count:', userPlaylists?.length || 0);
+      setPlaylists(userPlaylists || []);
     } catch (error) {
       console.error('Failed to load library:', error);
+      setPlaylists([]);
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Refresh playlists when switching to playlist tab
+  useEffect(() => {
+    if (activeTab === 'playlist') {
+      refreshPlaylists();
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     loadLibraryContent();
@@ -66,6 +103,28 @@ export function Library() {
       setLikedSongs(likedSongsData.tracks);
     }
   }, [likedSongsData]);
+
+  // Debug logs for playlists
+  useEffect(() => {
+    console.log('📝 Library: playlists state updated:', playlists);
+    console.log('📝 Library: playlists.length:', playlists.length);
+    console.log('📝 Library: activeTab:', activeTab);
+  }, [playlists, activeTab]);
+
+  // Listen for playlist updates from other components
+  useEffect(() => {
+    const handlePlaylistUpdate = () => {
+      console.log('🔄 Playlist update detected, refreshing...');
+      refreshPlaylists();
+    };
+
+    // Custom event listener for playlist updates
+    window.addEventListener('playlist-updated', handlePlaylistUpdate);
+    
+    return () => {
+      window.removeEventListener('playlist-updated', handlePlaylistUpdate);
+    };
+  }, [refreshPlaylists]);
 
   const handleCreatePlaylist = async () => {
     if (!newPlaylistName.trim()) return;
@@ -94,6 +153,65 @@ export function Library() {
     }
   };
 
+  const handleArtistClick = async (artist: Artist, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      console.log('🎵 Artist clicked:', artist.name);
+      
+      // Get complete artist information from Spotify API
+      const fullArtist = await api?.getArtist(artist.id);
+      if (fullArtist) {
+        console.log('📝 Full artist data:', fullArtist);
+        setSelectedArtist(fullArtist);
+      } else {
+        // Fallback to basic artist info
+        setSelectedArtist(artist);
+      }
+    } catch (error) {
+      console.error('❌ Failed to handle artist click:', error);
+      // Fallback to basic artist info
+      setSelectedArtist(artist);
+    }
+  };
+
+  const handlePlayPlaylist = async (playlist: Playlist) => {
+    try {
+      console.log('🎵 Playing playlist:', playlist.name);
+      
+      if (playlist.tracks.length > 0) {
+        const firstTrack = playlist.tracks[0];
+        
+        // If the same track is already playing, just toggle play/pause
+        if (currentTrack?.id === firstTrack.id) {
+          if (isPlaying) {
+            audioPlayer.pause();
+          } else {
+            audioPlayer.resume();
+          }
+        } else {
+          // Play the first track of the playlist
+          await audioPlayer.playTrack(firstTrack);
+        }
+        
+        console.log('✅ Playlist play command sent to audioPlayer');
+      } else {
+        console.log('📝 Playlist is empty, nothing to play');
+      }
+    } catch (error) {
+      console.error('❌ Failed to play playlist:', error);
+    }
+  };
+
+  // Helper function to determine if a track is currently playing
+  const isCurrentlyPlaying = (track: Track) => {
+    return currentTrack?.id === track.id && isPlaying;
+  };
+
+  // Helper function to get the correct icon for play/pause button
+  const getPlayPauseIcon = (track: Track) => {
+    return isCurrentlyPlaying(track) ? Pause : Play;
+  };
+
   const formatDuration = (duration_ms: number): string => {
     const minutes = Math.floor(duration_ms / 60000);
     const seconds = Math.floor((duration_ms % 60000) / 1000);
@@ -104,47 +222,85 @@ export function Library() {
     { id: 'playlists' as const, label: 'Playlists', count: playlists.length },
     { id: 'liked' as const, label: 'Liked Songs', count: likedSongs.length },
     { id: 'albums' as const, label: 'Albums', count: 0 },
-    { id: 'artists' as const, label: 'Artists', count: 0 },
+    { id: 'artists' as const, label: 'Artists', count: followedArtists.length },
   ];
 
-  const PlaylistCard = ({ playlist }: { playlist: Playlist }) => (
-    <div className="card group cursor-pointer">
-      <div className="relative mb-4">
-        <div className="w-full aspect-square bg-spotify-highlight rounded-lg flex items-center justify-center">
-          <div className="text-spotify-gray">
-            <Play size={48} />
+  const PlaylistCard = ({ playlist }: { playlist: Playlist }) => {
+    const firstTrack = playlist.tracks[0];
+    const isPlayingFirstTrack = firstTrack ? isCurrentlyPlaying(firstTrack) : false;
+    
+    return (
+      <div 
+        className="card group cursor-pointer" 
+        onClick={() => {
+          setSelectedPlaylist(playlist);
+          setActiveTab('playlist');
+        }}
+      >
+        <div className="relative mb-4">
+          <div className="w-full aspect-square bg-spotify-highlight rounded-lg flex items-center justify-center">
+            <div className="text-spotify-gray group-hover:text-white">
+              <Play size={48} />
+            </div>
           </div>
+          <button 
+            className="absolute bottom-2 right-2 bg-spotify-green text-white rounded-full p-3 opacity-0 group-hover:opacity-100 shadow-lg"
+            onClick={(e) => {
+              e.stopPropagation();
+              handlePlayPlaylist(playlist);
+            }}
+          >
+            {isPlayingFirstTrack ? (
+              <Pause size={20} fill="white" />
+            ) : (
+              <Play size={20} fill="white" />
+            )}
+          </button>
         </div>
-        <button className="absolute bottom-2 right-2 bg-spotify-green text-white rounded-full p-3 opacity-0 group-hover:opacity-100 transition-opacity hover:scale-105 shadow-lg">
-          <Play size={20} fill="white" />
-        </button>
+        <h3 className="font-semibold truncate mb-1 group-hover:text-white">{playlist.name}</h3>
+        <p className="text-sm text-spotify-gray">
+          {playlist.tracks.length} {playlist.tracks.length === 1 ? 'song' : 'songs'}
+        </p>
+        {playlist.description && (
+          <p className="text-xs text-spotify-gray mt-1 truncate">{playlist.description}</p>
+        )}
       </div>
-      <h3 className="font-semibold truncate mb-1">{playlist.name}</h3>
-      <p className="text-sm text-spotify-gray">
-        {playlist.tracks.length} {playlist.tracks.length === 1 ? 'song' : 'songs'}
-      </p>
-      {playlist.description && (
-        <p className="text-xs text-spotify-gray mt-1 truncate">{playlist.description}</p>
-      )}
-    </div>
-  );
+    );
+  };
 
-  const LikedSongsCard = () => (
-    <div className="card group cursor-pointer" onClick={() => setActiveTab('liked')}>
-      <div className="relative mb-4">
-        <div className="w-full aspect-square bg-gradient-to-br from-spotify-green to-green-600 rounded-lg flex items-center justify-center">
-          <Heart size={48} fill="white" className="text-white" />
+  const LikedSongsCard = () => {
+    const firstLikedSong = likedSongs[0];
+    const isPlayingFirstLiked = firstLikedSong ? isCurrentlyPlaying(firstLikedSong) : false;
+    
+    return (
+      <div className="card group cursor-pointer" onClick={() => setActiveTab('liked')}>
+        <div className="relative mb-4">
+          <div className="w-full aspect-square bg-gradient-to-br from-spotify-green to-green-600 rounded-lg flex items-center justify-center">
+            <Heart size={48} fill="white" className="text-white" />
+          </div>
+          <button 
+            className="absolute bottom-2 right-2 bg-white text-spotify-green rounded-full p-3 opacity-0 group-hover:opacity-100 shadow-lg"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (likedSongs.length > 0) {
+                handlePlayTrack(likedSongs[0]);
+              }
+            }}
+          >
+            {isPlayingFirstLiked ? (
+              <Pause size={20} fill="currentColor" />
+            ) : (
+              <Play size={20} fill="currentColor" />
+            )}
+          </button>
         </div>
-        <button className="absolute bottom-2 right-2 bg-spotify-green text-white rounded-full p-3 opacity-0 group-hover:opacity-100 transition-opacity hover:scale-105 shadow-lg">
-          <Play size={20} fill="white" />
-        </button>
+        <h3 className="font-semibold truncate mb-1">Liked Songs</h3>
+        <p className="text-sm text-spotify-gray">
+          {likedSongs.length} {likedSongs.length === 1 ? 'song' : 'songs'}
+        </p>
       </div>
-      <h3 className="font-semibold truncate mb-1">Liked Songs</h3>
-      <p className="text-sm text-spotify-gray">
-        {likedSongs.length} {likedSongs.length === 1 ? 'song' : 'songs'}
-      </p>
-    </div>
-  );
+    );
+  };
 
   if (isLoading) {
     return (
@@ -173,15 +329,32 @@ export function Library() {
     <div className="p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold">Your Library</h1>
+        <div className="flex items-center gap-4">
+          {activeTab === 'playlist' && selectedPlaylist && (
+            <button 
+              onClick={() => setActiveTab('playlists')}
+              className="btn-ghost p-2"
+            >
+              <ChevronLeft size={20} />
+            </button>
+          )}
+          <h1 className="text-3xl font-bold">
+            {activeTab === 'playlist' && selectedPlaylist 
+              ? selectedPlaylist.name 
+              : 'Your Library'
+            }
+          </h1>
+        </div>
         <div className="flex items-center gap-2">
-          <button 
-            onClick={() => setShowCreatePlaylist(true)}
-            className="btn-primary flex items-center gap-2"
-          >
-            <Plus size={20} />
-            Create Playlist
-          </button>
+          {activeTab === 'playlists' && (
+            <button 
+              onClick={() => setShowCreatePlaylist(true)}
+              className="btn-primary flex items-center gap-2"
+            >
+              <Plus size={20} />
+              Create Playlist
+            </button>
+          )}
         </div>
       </div>
 
@@ -219,20 +392,28 @@ export function Library() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12">
-                <div className="text-spotify-gray mb-4">
-                  <Plus size={48} className="mx-auto" />
+              <div className="text-center py-16">
+                <div className="mb-8">
+                  <div className="w-32 h-32 bg-spotify-highlight rounded-full flex items-center justify-center mx-auto mb-6 group hover:bg-spotify-green transition-colors cursor-pointer">
+                    <Plus size={48} className="text-spotify-gray group-hover:text-white transition-colors" />
+                  </div>
                 </div>
-                <h3 className="text-xl font-semibold mb-2">Create your first playlist</h3>
-                <p className="text-spotify-gray mb-6">
-                  It's easy, we'll help you build the perfect playlist
+                <h3 className="text-2xl font-bold mb-3">Create your first playlist</h3>
+                <p className="text-spotify-gray mb-8 max-w-md mx-auto">
+                  It's easy, we'll help you build the perfect playlist with your favorite songs
                 </p>
                 <button 
                   onClick={() => setShowCreatePlaylist(true)}
-                  className="btn-primary"
+                  className="btn-primary flex items-center gap-2 mx-auto text-lg px-8 py-3"
                 >
+                  <Plus size={20} />
                   Create Playlist
                 </button>
+                
+                {/* Debug info */}
+                <div className="mt-4 text-xs text-spotify-gray">
+                  Debug: playlists.length={playlists.length}, activeTab={activeTab}, isLoading={isLoading.toString()}
+                </div>
               </div>
             )}
           </div>
@@ -263,7 +444,18 @@ export function Library() {
                     <div className="flex-1 min-w-0">
                       <h4 className="font-medium truncate">{track.name}</h4>
                       <p className="text-sm text-spotify-gray truncate">
-                        {track.artists.map(a => a.name).join(', ')}
+                        {track.artists.map((artist, index) => (
+                          <React.Fragment key={artist.id}>
+                            <button
+                              onClick={(e) => handleArtistClick(artist, e)}
+                              className="text-spotify-gray hover:text-white transition-colors"
+                              title={`View ${artist.name}`}
+                            >
+                              {artist.name}
+                            </button>
+                            {index < track.artists.length - 1 && ', '}
+                          </React.Fragment>
+                        ))}
                       </p>
                     </div>
                     <div className="text-spotify-gray text-sm">
@@ -299,13 +491,154 @@ export function Library() {
           </div>
         )}
 
+        {activeTab === 'playlist' && selectedPlaylist && (
+          <div>
+            <div className="mb-4">
+              <p className="text-sm text-spotify-gray">
+                {selectedPlaylist.tracks.length} {selectedPlaylist.tracks.length === 1 ? 'song' : 'songs'}
+              </p>
+              {selectedPlaylist.description && (
+                <p className="text-sm text-spotify-gray mt-1">{selectedPlaylist.description}</p>
+              )}
+            </div>
+            {selectedPlaylist.tracks.length > 0 ? (
+              <div className="space-y-2">
+                {selectedPlaylist.tracks.map((track) => (
+                  <div
+                    key={track.id}
+                    className="track-card group"
+                    onClick={() => handlePlayTrack(track)}
+                  >
+                    {track.album?.images?.[0] && (
+                      <img
+                        src={track.album.images[0].url}
+                        alt={track.name}
+                        className="w-12 h-12 rounded"
+                      />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium truncate">{track.name}</h4>
+                      <p className="text-sm text-spotify-gray truncate">
+                        {track.artists.map((artist, index) => (
+                          <React.Fragment key={artist.id}>
+                            <button
+                              onClick={(e) => handleArtistClick(artist, e)}
+                              className="text-spotify-gray hover:text-white transition-colors"
+                              title={`View ${artist.name}`}
+                            >
+                              {artist.name}
+                            </button>
+                            {index < track.artists.length - 1 && ', '}
+                          </React.Fragment>
+                        ))}
+                      </p>
+                    </div>
+                    <div className="text-spotify-gray text-sm">
+                      {track.album.name}
+                    </div>
+                    <div className="text-spotify-gray text-sm">
+                      {formatDuration(track.duration_ms)}
+                    </div>
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <HeartButtonWrapper track={track} size={16} />
+                      <button className="text-spotify-gray hover:text-white transition-colors">
+                        <Download size={16} />
+                      </button>
+                      <button className="text-spotify-gray hover:text-white transition-colors">
+                        <MoreHorizontal size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Play size={48} className="text-spotify-gray mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">No songs in this playlist</h3>
+                <p className="text-spotify-gray mb-6">
+                  Add some songs to this playlist to get started
+                </p>
+                <button 
+                  onClick={() => setActiveTab('playlists')}
+                  className="btn-primary"
+                >
+                  Browse Music
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {activeTab === 'artists' && (
-          <div className="text-center py-12">
-            <MoreHorizontal size={48} className="text-spotify-gray mx-auto mb-4" />
-            <h3 className="text-xl font-semibold mb-2">No artists yet</h3>
-            <p className="text-spotify-gray mb-6">
-              Artists you follow will appear here
-            </p>
+          <div>
+            {followedArtists.length > 0 ? (
+              <div className="grid grid-cols-4 gap-4">
+                {followedArtists.map((artist) => (
+                  <div
+                    key={artist.id}
+                    className="card group cursor-pointer"
+                    onClick={() => {
+                      // Handle artist click - could open artist detail page
+                      console.log('🎵 Artist clicked:', artist.name);
+                    }}
+                  >
+                    <div className="relative mb-4">
+                      {artist.images?.[0] ? (
+                        <img
+                          src={artist.images[0].url}
+                          alt={artist.name}
+                          className="w-full aspect-square rounded-lg object-cover"
+                        />
+                      ) : (
+                        <div className="w-full aspect-square bg-spotify-highlight rounded-lg flex items-center justify-center">
+                          <div className="text-spotify-gray">
+                            <Play size={48} />
+                          </div>
+                        </div>
+                      )}
+                      <button
+                        className="absolute bottom-2 right-2 bg-spotify-green text-white rounded-full p-3 opacity-0 group-hover:opacity-100 shadow-lg"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Handle play artist - would need artist top tracks
+                          console.log('🎵 Play artist:', artist.name);
+                        }}
+                      >
+                        <Play size={20} fill="white" />
+                      </button>
+                    </div>
+                    <h3 className="font-semibold truncate mb-1 group-hover:text-white">{artist.name}</h3>
+                    <p className="text-sm text-spotify-gray">
+                      {artist.followers ? `${artist.followers.toLocaleString()} followers` : 'Artist'}
+                    </p>
+                    {artist.genres && artist.genres.length > 0 && (
+                      <p className="text-xs text-spotify-gray mt-1 truncate">
+                        {artist.genres.slice(0, 2).join(', ')}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-16">
+                <div className="mb-8">
+                  <div className="w-32 h-32 bg-spotify-highlight rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Play size={48} className="text-spotify-gray" />
+                  </div>
+                </div>
+                <h3 className="text-2xl font-bold mb-3">Follow your first artist</h3>
+                <p className="text-spotify-gray mb-8 max-w-md mx-auto">
+                  Follow artists to never miss new releases and see their latest music
+                </p>
+                <button 
+                  onClick={() => window.location.href = '/search'}
+                  className="btn-primary flex items-center gap-2 mx-auto text-lg px-8 py-3"
+                >
+                  <Plus size={20} />
+                  Browse Artists
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -344,6 +677,14 @@ export function Library() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Artist Modal */}
+      {selectedArtist && (
+        <ArtistModal 
+          artist={selectedArtist} 
+          onClose={() => setSelectedArtist(null)} 
+        />
       )}
     </div>
   );

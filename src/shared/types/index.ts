@@ -19,9 +19,11 @@ export interface Artist {
   images?: Image[];
   genres?: string[];
   popularity?: number;
+  followers?: number;
   external_urls: {
     spotify: string;
   };
+  followed?: boolean; // Add followed property for subscription system
 }
 
 export interface Album {
@@ -89,6 +91,11 @@ export interface LikedSongs {
   id: string; // Always 'liked-songs'
   name: string; // Always 'Liked Songs'
   tracks: Track[];
+  updatedAt: Date;
+}
+
+export interface FollowedArtists {
+  artists: Artist[];
   updatedAt: Date;
 }
 

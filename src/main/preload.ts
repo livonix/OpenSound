@@ -52,6 +52,15 @@ export interface ElectronAPI {
   likeTrack: (track: any) => Promise<{ success: boolean }>;
   unlikeTrack: (trackId: string) => Promise<{ success: boolean }>;
   addLikedPropertyToTracks: (tracks: any[]) => Promise<any[]>;
+
+  // Followed Artists
+  getFollowedArtists: () => Promise<any[]>;
+  isFollowingArtist: (artistId: string) => Promise<boolean>;
+  toggleFollowArtist: (artist: any) => Promise<{ success: boolean; isFollowing: boolean }>;
+  followArtist: (artist: any) => Promise<{ success: boolean }>;
+  unfollowArtist: (artistId: string) => Promise<{ success: boolean }>;
+  getFollowedArtistsCount: () => Promise<number>;
+  addFollowedPropertyToArtists: (artists: any[]) => Promise<any[]>;
 }
 
 // Expose the API to the renderer process
@@ -154,7 +163,29 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke('liked-songs:unlike', trackId),
 
   addLikedPropertyToTracks: (tracks: any[]) => 
-    ipcRenderer.invoke('liked-songs:add-liked-property', tracks)
+    ipcRenderer.invoke('liked-songs:add-liked-property', tracks),
+
+  // Followed Artists
+  getFollowedArtists: () => 
+    ipcRenderer.invoke('followed-artists:get'),
+
+  isFollowingArtist: (artistId: string) => 
+    ipcRenderer.invoke('followed-artists:is-following', artistId),
+
+  toggleFollowArtist: (artist: any) => 
+    ipcRenderer.invoke('followed-artists:toggle', artist),
+
+  followArtist: (artist: any) => 
+    ipcRenderer.invoke('followed-artists:follow', artist),
+
+  unfollowArtist: (artistId: string) => 
+    ipcRenderer.invoke('followed-artists:unfollow', artistId),
+
+  getFollowedArtistsCount: () => 
+    ipcRenderer.invoke('followed-artists:get-count'),
+
+  addFollowedPropertyToArtists: (artists: any[]) => 
+    ipcRenderer.invoke('followed-artists:add-followed-property', artists)
 };
 
 // Expose the API to the renderer process

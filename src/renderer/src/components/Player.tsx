@@ -7,11 +7,14 @@ import {
   Volume2, 
   Repeat, 
   Shuffle,
-  PictureInPicture
+  PictureInPicture,
+  Plus
 } from 'lucide-react';
 import { usePlayerStore } from '../stores/playerStore';
 import { audioPlayer } from '../services/audioPlayer';
 import { HeartButtonWrapper } from './HeartButtonWrapper';
+import { usePlaylistAPI } from '../hooks/useElectronAPI';
+import { Track } from '../../../shared/types';
 
 export function Player() {
   const {
@@ -28,6 +31,10 @@ export function Player() {
     setCurrentTime,
     setRepeat,
   } = usePlayerStore();
+
+  const { getPlaylists, addTrackToPlaylist } = usePlaylistAPI();
+  const [showPlaylistModal, setShowPlaylistModal] = useState(false);
+  const [playlists, setPlaylists] = useState<any[]>([]);
 
   const progressBarRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -92,6 +99,33 @@ export function Player() {
     setRepeat(nextRepeat);
   };
 
+  const handleAddToPlaylist = async () => {
+    if (!currentTrack) return;
+    
+    try {
+      const userPlaylists = await getPlaylists();
+      setPlaylists(userPlaylists);
+      setShowPlaylistModal(true);
+    } catch (error) {
+      console.error('Failed to load playlists:', error);
+    }
+  };
+
+  const handleSelectPlaylist = async (playlistId: string) => {
+    if (!currentTrack) return;
+    
+    try {
+      await addTrackToPlaylist(playlistId, currentTrack);
+      setShowPlaylistModal(false);
+      console.log('✅ Track added to playlist successfully');
+      
+      // Emit event to notify other components
+      window.dispatchEvent(new CustomEvent('playlist-updated'));
+    } catch (error) {
+      console.error('❌ Failed to add track to playlist:', error);
+    }
+  };
+
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
@@ -134,6 +168,16 @@ export function Player() {
 
         {currentTrack && (
           <HeartButtonWrapper track={currentTrack} size={18} />
+        )}
+        
+        {currentTrack && (
+          <button 
+            onClick={handleAddToPlaylist}
+            className="text-spotify-gray hover:text-white transition-colors"
+            title="Add to Playlist"
+          >
+            <Plus size={18} />
+          </button>
         )}
       </div>
 
@@ -229,6 +273,54 @@ export function Player() {
           />
         </div>
       </div>
+
+      {/* Playlist Selection Modal */}
+      {showPlaylistModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-spotify-highlight rounded-lg p-6 w-96 max-w-full mx-4">
+            <h2 className="text-xl font-bold mb-4">Add to Playlist</h2>
+            
+            {currentTrack && (
+              <div className="mb-4 p-3 bg-spotify-dark rounded-lg">
+                <p className="font-medium truncate">{currentTrack.name}</p>
+                <p className="text-sm text-spotify-gray truncate">
+                  {currentTrack.artists.map((a: any) => a.name).join(', ')}
+                </p>
+              </div>
+            )}
+
+            <div className="space-y-2 mb-6 max-h-64 overflow-y-auto">
+              {playlists.length > 0 ? (
+                playlists.map((playlist) => (
+                  <button
+                    key={playlist.id}
+                    onClick={() => handleSelectPlaylist(playlist.id)}
+                    className="w-full text-left p-3 rounded-lg hover:bg-spotify-dark transition-colors"
+                  >
+                    <p className="font-medium">{playlist.name}</p>
+                    <p className="text-sm text-spotify-gray">
+                      {playlist.tracks.length} {playlist.tracks.length === 1 ? 'song' : 'songs'}
+                    </p>
+                  </button>
+                ))
+              ) : (
+                <p className="text-center text-spotify-gray py-4">
+                  No playlists found. Create one first!
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setShowPlaylistModal(false)}
+                className="btn-ghost"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
