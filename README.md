@@ -17,7 +17,9 @@
 
 ---
 
-# Lancer l'application
+## 🚀 Lancer l'application
+ 
+```bash
 npm start
 ```
 
