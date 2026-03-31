@@ -169,7 +169,6 @@ Advantages : Lightweight, fast, no Java, more reliable
 - [ ] **Multi-sources** : SoundCloud, Bandcamp, etc.
 - [ ] **Social** : Social sharing, profiles
 - [ ] **Live** : Live streaming
-- [ ] **Monetization** : Ad-free premium option
 
 ## 🛠️ Development
 
