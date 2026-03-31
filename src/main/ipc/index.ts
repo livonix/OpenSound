@@ -7,6 +7,7 @@ import { StreamService } from '../services/streamer';
 import { CacheService } from '../services/cache';
 import { PlaybackService } from '../services/playback';
 import { PlaylistService } from '../services/playlist';
+import { LikedSongsService } from '../services/likedSongs';
 import { UpdaterService } from '../services/updater';
 import { Track } from '../../shared/types';
 
@@ -18,6 +19,7 @@ let streamService: StreamService;
 let cacheService: CacheService;
 let playbackService: PlaybackService;
 let playlistService: PlaylistService;
+let likedSongsService: LikedSongsService;
 let updaterService: UpdaterService;
 
 export function setupIpcHandlers(): void {
@@ -32,6 +34,7 @@ export function setupIpcHandlers(): void {
   cacheService = new CacheService(config.cache);
   playbackService = new PlaybackService(streamService);
   playlistService = new PlaylistService();
+  likedSongsService = new LikedSongsService();
   updaterService = new UpdaterService();
 
   // Test Discord RPC
@@ -307,6 +310,64 @@ export function setupIpcHandlers(): void {
       return updaterService.isUpdateAvailable();
     } catch (error) {
       console.error('Check update available error:', error);
+      throw error;
+    }
+  });
+
+  // Liked Songs handlers
+  ipcMain.handle('liked-songs:get', async () => {
+    try {
+      return likedSongsService.getLikedSongs();
+    } catch (error) {
+      console.error('Get liked songs error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('liked-songs:is-liked', async (_, trackId: string) => {
+    try {
+      return likedSongsService.isTrackLiked(trackId);
+    } catch (error) {
+      console.error('Check if track is liked error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('liked-songs:toggle', async (_, track: Track) => {
+    try {
+      const isLiked = likedSongsService.toggleLikeTrack(track);
+      return { success: true, isLiked };
+    } catch (error) {
+      console.error('Toggle like track error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('liked-songs:like', async (_, track: Track) => {
+    try {
+      likedSongsService.likeTrack(track);
+      return { success: true };
+    } catch (error) {
+      console.error('Like track error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('liked-songs:unlike', async (_, trackId: string) => {
+    try {
+      likedSongsService.unlikeTrack(trackId);
+      return { success: true };
+    } catch (error) {
+      console.error('Unlike track error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('liked-songs:add-liked-property', async (_, tracks: Track[]) => {
+    try {
+      return likedSongsService.addLikedPropertyToTracks(tracks);
+    } catch (error) {
+      console.error('Add liked property to tracks error:', error);
       throw error;
     }
   });

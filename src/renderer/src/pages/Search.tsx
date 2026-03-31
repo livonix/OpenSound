@@ -3,6 +3,7 @@ import { Search as SearchIcon, X } from 'lucide-react';
 import { useSearchStore } from '../stores/searchStore';
 import { usePlayerStore } from '../stores/playerStore';
 import { audioPlayer } from '../services/audioPlayer';
+import { HeartButtonWrapper } from '../components/HeartButtonWrapper';
 import { Track } from '../../../shared/types';
 
 export function Search() {
@@ -214,7 +215,8 @@ export function Search() {
                     {formatDuration(track.duration_ms)}
                   </div>
                   
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <HeartButtonWrapper track={track} size={16} />
                     <button className="bg-spotify-green text-white rounded-full p-1 hover:scale-105 transition-transform">
                       <SearchIcon size={16} fill="white" />
                     </button>

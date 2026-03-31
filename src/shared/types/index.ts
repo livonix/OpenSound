@@ -10,6 +10,7 @@ export interface Track {
     spotify: string;
   };
   uri: string;
+  liked?: boolean; // Add liked property
 }
 
 export interface Artist {
@@ -81,6 +82,13 @@ export interface Playlist {
   description?: string;
   tracks: Track[];
   createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface LikedSongs {
+  id: string; // Always 'liked-songs'
+  name: string; // Always 'Liked Songs'
+  tracks: Track[];
   updatedAt: Date;
 }
 

@@ -7,11 +7,11 @@ import {
   Volume2, 
   Repeat, 
   Shuffle,
-  Heart,
   PictureInPicture
 } from 'lucide-react';
 import { usePlayerStore } from '../stores/playerStore';
 import { audioPlayer } from '../services/audioPlayer';
+import { HeartButtonWrapper } from './HeartButtonWrapper';
 
 export function Player() {
   const {
@@ -21,9 +21,12 @@ export function Player() {
     currentTime,
     duration,
     buffered,
+    repeat,
+    shuffle,
     setPlaying,
     setVolume,
     setCurrentTime,
+    setRepeat,
   } = usePlayerStore();
 
   const progressBarRef = useRef<HTMLDivElement>(null);
@@ -84,6 +87,11 @@ export function Player() {
     audioPlayer.setVolume(newVolume);
   };
 
+  const handleRepeat = () => {
+    const nextRepeat = repeat === 'off' ? 'all' : repeat === 'all' ? 'one' : 'off';
+    setRepeat(nextRepeat);
+  };
+
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
@@ -115,8 +123,8 @@ export function Player() {
           />
         )}
         
-        <div className="min-w-0">
-          <h4 className="text-sm font-medium truncate hover:text-spotify-gray cursor-pointer">
+        <div className="flex-1 min-w-0">
+          <h4 className="text-sm font-medium truncate">
             {currentTrack.name}
           </h4>
           <p className="text-xs text-spotify-gray truncate">
@@ -124,9 +132,9 @@ export function Player() {
           </p>
         </div>
 
-        <button className="text-spotify-gray hover:text-white transition-colors">
-          <Heart size={18} />
-        </button>
+        {currentTrack && (
+          <HeartButtonWrapper track={currentTrack} size={18} />
+        )}
       </div>
 
       {/* Player Controls */}
@@ -151,7 +159,13 @@ export function Player() {
             <SkipForward size={18} />
           </button>
           
-          <button className="text-spotify-gray hover:text-white transition-colors">
+          <button 
+            onClick={handleRepeat}
+            className={`text-spotify-gray hover:text-white transition-colors ${
+              repeat !== 'off' ? 'text-spotify-green' : ''
+            }`}
+            title={`Repeat: ${repeat}`}
+          >
             <Repeat size={18} />
           </button>
         </div>

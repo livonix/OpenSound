@@ -52,15 +52,15 @@ export function Layout({ children }: LayoutProps) {
 
         {/* Playlist Section */}
         <div className="space-y-4">
-          <button className="btn-ghost flex items-center gap-3 w-full justify-start">
+          <Link to="/library?tab=create" className="btn-ghost flex items-center gap-3 w-full justify-start">
             <PlusCircle size={20} />
             <span className="font-medium">Create Playlist</span>
-          </button>
+          </Link>
           
-          <button className="btn-ghost flex items-center gap-3 w-full justify-start">
+          <Link to="/library?tab=liked" className="btn-ghost flex items-center gap-3 w-full justify-start">
             <Heart size={20} />
             <span className="font-medium">Liked Songs</span>
-          </button>
+          </Link>
         </div>
 
         {/* Divider */}

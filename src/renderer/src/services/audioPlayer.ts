@@ -2,52 +2,65 @@ import { Track } from '../../../shared/types';
 import { usePlayerStore } from '../stores/playerStore';
 
 export class AudioPlayerService {
-  private audio: HTMLAudioElement | null = null;
+  private audio: HTMLAudioElement;
+  private isInitialized = false;
+  private onEndedCallback?: () => void;
   private currentTrack: Track | null = null;
-  private updateInterval: NodeJS.Timeout | null = null;
+  private updateInterval?: NodeJS.Timeout;
 
   constructor() {
-    // Create audio element
     this.audio = new Audio();
-    this.setupEventListeners();
+    this.setupAudioElement();
   }
 
-  private setupEventListeners() {
-    if (!this.audio) return;
-
+  private setupAudioElement(): void {
+    // Time update
     this.audio.addEventListener('timeupdate', () => {
-      if (this.audio) {
-        usePlayerStore.getState().setCurrentTime(this.audio.currentTime);
-      }
+      usePlayerStore.getState().setCurrentTime(this.audio.currentTime);
     });
 
+    // Metadata loaded
     this.audio.addEventListener('loadedmetadata', () => {
-      if (this.audio) {
-        usePlayerStore.getState().setDuration(this.audio.duration);
-      }
+      usePlayerStore.getState().setDuration(this.audio.duration);
     });
 
+    // Progress
     this.audio.addEventListener('progress', () => {
-      if (this.audio && this.audio.buffered.length > 0) {
-        const buffered = this.audio.buffered.end(this.audio.buffered.length - 1);
-        usePlayerStore.getState().setBuffered(buffered);
+      if (this.audio.buffered.length > 0) {
+        usePlayerStore.getState().setBuffered(this.audio.buffered.end(this.audio.buffered.length - 1));
       }
     });
 
+    // Track ended
     this.audio.addEventListener('ended', () => {
-      this.next();
+      const { repeat, setPlaying } = usePlayerStore.getState();
+      
+      if (repeat === 'one') {
+        // Repeat current track
+        this.audio.currentTime = 0;
+        this.audio.play();
+      } else if (repeat === 'all') {
+        // Go to next track (or stop if last track)
+        this.next().catch(() => {
+          setPlaying(false);
+        });
+      } else {
+        // No repeat - stop playing
+        setPlaying(false);
+      }
+      
+      if (this.onEndedCallback) {
+        this.onEndedCallback();
+      }
     });
 
+    // Error handling
     this.audio.addEventListener('error', (e) => {
-      const src = this.audio?.src || '';
-      if (!src || src === 'about:blank') {
-        return;
-      }
-      console.error('Audio playback error:', e);
-      console.error('Audio src:', src);
-      console.error('Audio error code:', this.audio?.error);
+      console.error('Audio error:', e);
       usePlayerStore.getState().setPlaying(false);
     });
+
+    this.isInitialized = true;
   }
 
   public async playTrack(track: Track): Promise<void> {
@@ -249,7 +262,8 @@ export class AudioPlayerService {
     if (this.updateInterval) {
       clearInterval(this.updateInterval);
     }
-    this.audio = null;
+    this.audio.src = '';
+    this.audio = null!;
   }
 }
 

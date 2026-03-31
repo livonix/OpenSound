@@ -1,40 +1,71 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Play, Heart, Download, MoreHorizontal, TestTube } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Plus, Play, Heart, Download, MoreHorizontal } from 'lucide-react';
 import { usePlaylistAPI, useElectronAPI } from '../hooks/useElectronAPI';
+import { useLikedSongs } from '../hooks/useLikedSongs';
 import { usePlayerStore } from '../stores/playerStore';
-import { Playlist, Track } from '@shared/types';
+import { audioPlayer } from '../services/audioPlayer';
+import { HeartButtonWrapper } from '../components/HeartButtonWrapper';
+import { Playlist, Track } from '../../../shared/types';
 
 export function Library() {
+  const [searchParams] = useSearchParams();
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [likedSongs, setLikedSongs] = useState<Track[]>([]);
-  const [activeTab, setActiveTab] = useState<'playlists' | 'liked' | 'albums' | 'artists'>('playlists');
+  const [activeTab, setActiveTab] = useState<'playlists' | 'liked' | 'albums' | 'artists' | 'create'>('playlists');
   const [isLoading, setIsLoading] = useState(true);
   const [showCreatePlaylist, setShowCreatePlaylist] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState('');
 
   const { getPlaylists, createPlaylist } = usePlaylistAPI();
   const { api } = useElectronAPI();
+  const { likedSongs: likedSongsData, isLoading: likedSongsLoading, refreshLikedSongs } = useLikedSongs();
   const { setCurrentTrack, setPlaying } = usePlayerStore();
 
+  // Handle URL parameter for tab selection and refresh liked songs
   useEffect(() => {
-    loadLibraryContent();
-  }, []);
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'liked') {
+      setActiveTab('liked');
+      // Refresh liked songs when switching to liked tab
+      refreshLikedSongs();
+    } else if (tabParam === 'create') {
+      setActiveTab('create');
+      setShowCreatePlaylist(true);
+    }
+  }, [searchParams, refreshLikedSongs]);
+
+  // Handle tab changes and refresh liked songs when switching to liked tab
+  useEffect(() => {
+    if (activeTab === 'liked') {
+      console.log('🔄 Switching to liked tab, refreshing data...');
+      refreshLikedSongs();
+    }
+  }, [activeTab, refreshLikedSongs]);
 
   const loadLibraryContent = async () => {
     try {
       setIsLoading(true);
       const userPlaylists = await getPlaylists();
       setPlaylists(userPlaylists);
-      
-      // In a real app, you'd load liked songs from the backend
-      // For now, we'll use an empty array
-      setLikedSongs([]);
     } catch (error) {
       console.error('Failed to load library:', error);
     } finally {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadLibraryContent();
+  }, []);
+
+  useEffect(() => {
+    if (likedSongsData) {
+      console.log('📝 Library: likedSongsData updated:', likedSongsData);
+      console.log('📝 Library: likedSongsData.tracks length:', likedSongsData.tracks.length);
+      setLikedSongs(likedSongsData.tracks);
+    }
+  }, [likedSongsData]);
 
   const handleCreatePlaylist = async () => {
     if (!newPlaylistName.trim()) return;
@@ -44,25 +75,29 @@ export function Library() {
       setPlaylists([newPlaylist, ...playlists]);
       setNewPlaylistName('');
       setShowCreatePlaylist(false);
+      setActiveTab('playlists');
+      console.log('✅ Playlist created successfully:', newPlaylist.name);
     } catch (error) {
-      console.error('Failed to create playlist:', error);
-    }
-  };
-
-  const testDiscordRPC = async () => {
-    try {
-      if (api && api.testDiscordRPC) {
-        const result = await api.testDiscordRPC();
-        console.log('Discord RPC test result:', result);
-      }
-    } catch (error) {
-      console.error('Failed to test Discord RPC:', error);
+      console.error('❌ Failed to create playlist:', error);
     }
   };
 
   const handlePlayTrack = async (track: Track) => {
-    setCurrentTrack(track);
-    setPlaying(true);
+    try {
+      console.log('🎵 Playing track from library:', track.name);
+      
+      // Use the audioPlayer service directly
+      await audioPlayer.playTrack(track);
+      console.log('✅ Track play command sent to audioPlayer');
+    } catch (error) {
+      console.error('❌ Failed to play track:', error);
+    }
+  };
+
+  const formatDuration = (duration_ms: number): string => {
+    const minutes = Math.floor(duration_ms / 60000);
+    const seconds = Math.floor((duration_ms % 60000) / 1000);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
   const tabs = [
@@ -95,7 +130,7 @@ export function Library() {
   );
 
   const LikedSongsCard = () => (
-    <div className="card group cursor-pointer">
+    <div className="card group cursor-pointer" onClick={() => setActiveTab('liked')}>
       <div className="relative mb-4">
         <div className="w-full aspect-square bg-gradient-to-br from-spotify-green to-green-600 rounded-lg flex items-center justify-center">
           <Heart size={48} fill="white" className="text-white" />
@@ -140,14 +175,6 @@ export function Library() {
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold">Your Library</h1>
         <div className="flex items-center gap-2">
-          <button 
-            onClick={testDiscordRPC}
-            className="btn-secondary flex items-center gap-2"
-            title="Test Discord RPC"
-          >
-            <TestTube size={20} />
-            Test RPC
-          </button>
           <button 
             onClick={() => setShowCreatePlaylist(true)}
             className="btn-primary flex items-center gap-2"
@@ -213,12 +240,17 @@ export function Library() {
 
         {activeTab === 'liked' && (
           <div>
+            <div className="mb-4">
+              <p className="text-sm text-spotify-gray">
+                {likedSongsLoading ? 'Loading liked songs...' : `Showing ${likedSongs.length} liked song${likedSongs.length === 1 ? '' : 's'}`}
+              </p>
+            </div>
             {likedSongs.length > 0 ? (
               <div className="space-y-2">
                 {likedSongs.map((track) => (
                   <div
                     key={track.id}
-                    className="track-card"
+                    className="track-card group"
                     onClick={() => handlePlayTrack(track)}
                   >
                     {track.album?.images?.[0] && (
@@ -237,7 +269,18 @@ export function Library() {
                     <div className="text-spotify-gray text-sm">
                       {track.album.name}
                     </div>
-                    <Heart size={20} fill="white" className="text-spotify-green" />
+                    <div className="text-spotify-gray text-sm">
+                      {formatDuration(track.duration_ms)}
+                    </div>
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <HeartButtonWrapper track={track} size={16} />
+                      <button className="text-spotify-gray hover:text-white transition-colors">
+                        <Download size={16} />
+                      </button>
+                      <button className="text-spotify-gray hover:text-white transition-colors">
+                        <MoreHorizontal size={16} />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -248,18 +291,11 @@ export function Library() {
                 <p className="text-spotify-gray mb-6">
                   Songs you like will appear here
                 </p>
+                <p className="text-xs text-spotify-gray">
+                  Debug: likedSongsLoading={likedSongsLoading.toString()}, likedSongs.length={likedSongs.length}
+                </p>
               </div>
             )}
-          </div>
-        )}
-
-        {activeTab === 'albums' && (
-          <div className="text-center py-12">
-            <Download size={48} className="text-spotify-gray mx-auto mb-4" />
-            <h3 className="text-xl font-semibold mb-2">No albums yet</h3>
-            <p className="text-spotify-gray mb-6">
-              Albums you save will appear here
-            </p>
           </div>
         )}
 

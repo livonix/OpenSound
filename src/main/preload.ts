@@ -44,6 +44,14 @@ export interface ElectronAPI {
   testDiscordRPC: () => Promise<{ success: boolean; error?: string }>;
   updateDiscordTrack: (track: any) => Promise<{ success: boolean; error?: string }>;
   updateDiscordPlayingState: (isPlaying: boolean) => Promise<{ success: boolean; error?: string }>;
+
+  // Liked Songs
+  getLikedSongs: () => Promise<any>;
+  isTrackLiked: (trackId: string) => Promise<boolean>;
+  toggleLikeTrack: (track: any) => Promise<{ success: boolean; isLiked: boolean }>;
+  likeTrack: (track: any) => Promise<{ success: boolean }>;
+  unlikeTrack: (trackId: string) => Promise<{ success: boolean }>;
+  addLikedPropertyToTracks: (tracks: any[]) => Promise<any[]>;
 }
 
 // Expose the API to the renderer process
@@ -127,7 +135,26 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke('discord:update-track', track),
 
   updateDiscordPlayingState: (isPlaying: boolean) => 
-    ipcRenderer.invoke('discord:update-playing-state', isPlaying)
+    ipcRenderer.invoke('discord:update-playing-state', isPlaying),
+
+  // Liked Songs
+  getLikedSongs: () => 
+    ipcRenderer.invoke('liked-songs:get'),
+
+  isTrackLiked: (trackId: string) => 
+    ipcRenderer.invoke('liked-songs:is-liked', trackId),
+
+  toggleLikeTrack: (track: any) => 
+    ipcRenderer.invoke('liked-songs:toggle', track),
+
+  likeTrack: (track: any) => 
+    ipcRenderer.invoke('liked-songs:like', track),
+
+  unlikeTrack: (trackId: string) => 
+    ipcRenderer.invoke('liked-songs:unlike', trackId),
+
+  addLikedPropertyToTracks: (tracks: any[]) => 
+    ipcRenderer.invoke('liked-songs:add-liked-property', tracks)
 };
 
 // Expose the API to the renderer process
