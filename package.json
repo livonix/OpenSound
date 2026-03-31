@@ -34,6 +34,7 @@
   "author": "OpenSound Team",
   "license": "MIT",
   "devDependencies": {
+    "@types/discord-rpc": "^4.0.10",
     "@types/node": "latest",
     "@types/uuid": "latest",
     "concurrently": "latest",
@@ -44,10 +45,10 @@
   },
   "dependencies": {
     "axios": "latest",
-    "discord-rpc": "latest",
+    "discord-rpc": "^4.0.1",
     "dotenv": "latest",
     "electron-log": "latest",
-    "electron-updater": "latest",
+    "electron-updater": "^6.8.3",
     "fluent-ffmpeg": "latest",
     "play-dl": "latest",
     "uuid": "latest",
