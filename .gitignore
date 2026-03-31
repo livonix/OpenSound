@@ -41,3 +41,4 @@ yarn-error.log*
 /dist
 /src/renderer/node_modules
 /release
+/src/renderer

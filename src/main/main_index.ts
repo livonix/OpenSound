@@ -96,6 +96,13 @@ class OpenSoundApp {
         submenu: [
           { role: 'about', label: 'About OpenSound' },
           { type: 'separator' },
+          { 
+            label: 'Check for Updates', 
+            click: () => {
+              this.updaterService.checkForUpdates();
+            }
+          },
+          { type: 'separator' },
           { role: 'services', label: 'Services' },
           { type: 'separator' },
           { role: 'hide', label: 'Hide OpenSound' },
