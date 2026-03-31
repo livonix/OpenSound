@@ -1,4 +1,4 @@
-import { ipcMain, shell, app } from 'electron';
+import { ipcMain, shell, app, BrowserWindow } from 'electron';
 import { ConfigService } from '../services/config';
 import { SpotifyService } from '../services/spotify';
 import { YouTubeService } from '../services/youtube';
@@ -33,10 +33,54 @@ export function setupIpcHandlers(): void {
   youtubeStreamingService = new YouTubeStreamingService();
   streamService = new StreamService();
   cacheService = new CacheService(config.cache);
-  playbackService = new PlaybackService(streamService);
+  playbackService = new PlaybackService(streamService, spotifyService);
   playlistService = new PlaylistService();
   likedSongsService = new LikedSongsService();
   updaterService = new UpdaterService();
+
+  // Setup playback event forwarding
+  playbackService.on('queue-updated', (queue: Track[]) => {
+    // Forward to all renderer windows
+    const windows = BrowserWindow.getAllWindows();
+    windows.forEach((window: BrowserWindow) => {
+      window.webContents.send('playback:queue-updated', queue);
+    });
+  });
+
+  playbackService.on('track-added-to-queue', (track: Track) => {
+    const windows = BrowserWindow.getAllWindows();
+    windows.forEach((window: BrowserWindow) => {
+      window.webContents.send('playback:track-added-to-queue', track);
+    });
+  });
+
+  playbackService.on('track-removed-from-queue', (track: Track, index: number) => {
+    const windows = BrowserWindow.getAllWindows();
+    windows.forEach((window: BrowserWindow) => {
+      window.webContents.send('playback:track-removed-from-queue', track, index);
+    });
+  });
+
+  playbackService.on('next-track-preloaded', (track: Track) => {
+    const windows = BrowserWindow.getAllWindows();
+    windows.forEach((window: BrowserWindow) => {
+      window.webContents.send('playback:next-track-preloaded', track);
+    });
+  });
+
+  playbackService.on('track-changed', (track: Track) => {
+    const windows = BrowserWindow.getAllWindows();
+    windows.forEach((window: BrowserWindow) => {
+      window.webContents.send('playback:track-changed', track);
+    });
+  });
+
+  playbackService.on('track-ended', () => {
+    const windows = BrowserWindow.getAllWindows();
+    windows.forEach((window: BrowserWindow) => {
+      window.webContents.send('playback:track-ended');
+    });
+  });
 
   // Test Discord RPC
   ipcMain.handle('discord:test', () => {
@@ -153,8 +197,8 @@ export function setupIpcHandlers(): void {
   // Playback handlers
   ipcMain.handle('playback:play', async (_, track) => {
     try {
-      await playbackService.play(track);
-      return { success: true };
+      const result = await playbackService.play(track);
+      return result;
     } catch (error) {
       console.error('Playback error:', error);
       throw error;
@@ -197,6 +241,124 @@ export function setupIpcHandlers(): void {
       return { success: true };
     } catch (error) {
       console.error('Seek error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('playback:next', async () => {
+    try {
+      await playbackService.next();
+      return { success: true };
+    } catch (error) {
+      console.error('Next track error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('playback:previous', async () => {
+    try {
+      await playbackService.previous();
+      return { success: true };
+    } catch (error) {
+      console.error('Previous track error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('playback:stop', async () => {
+    try {
+      await playbackService.stop();
+      return { success: true };
+    } catch (error) {
+      console.error('Stop error:', error);
+      throw error;
+    }
+  });
+
+  // Queue handlers
+  ipcMain.handle('queue:set', async (_, tracks: Track[]) => {
+    try {
+      playbackService.setQueue(tracks);
+      return { success: true };
+    } catch (error) {
+      console.error('Set queue error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('queue:add', async (_, track: Track) => {
+    try {
+      playbackService.addToQueue(track);
+      return { success: true };
+    } catch (error) {
+      console.error('Add to queue error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('queue:remove', async (_, index: number) => {
+    try {
+      playbackService.removeFromQueue(index);
+      return { success: true };
+    } catch (error) {
+      console.error('Remove from queue error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('queue:get', async () => {
+    try {
+      return playbackService.getQueue();
+    } catch (error) {
+      console.error('Get queue error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('queue:clear', async () => {
+    try {
+      playbackService.clearQueue();
+      return { success: true };
+    } catch (error) {
+      console.error('Clear queue error:', error);
+      throw error;
+    }
+  });
+
+  // Preloading handlers
+  ipcMain.handle('playback:set-preload-threshold', async (_, threshold: number) => {
+    try {
+      playbackService.setPreloadThreshold(threshold);
+      return { success: true };
+    } catch (error) {
+      console.error('Set preload threshold error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('playback:get-preload-threshold', async () => {
+    try {
+      return playbackService.getPreloadThreshold();
+    } catch (error) {
+      console.error('Get preload threshold error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('playback:is-next-track-preloaded', async () => {
+    try {
+      return playbackService.isNextTrackPreloaded();
+    } catch (error) {
+      console.error('Check if next track preloaded error:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('playback:get-next-track', async () => {
+    try {
+      return playbackService.getNextTrack();
+    } catch (error) {
+      console.error('Get next track error:', error);
       throw error;
     }
   });
@@ -302,6 +464,37 @@ export function setupIpcHandlers(): void {
       return { success: true };
     } catch (error) {
       console.error('Check for updates error:', error);
+      throw error;
+    }
+  });
+
+  // Smart queue handlers
+  ipcMain.handle('queue:generate-smart', async (_, seedTrack: any, queueSize?: number) => {
+    try {
+      const smartQueue = await playbackService.generateSmartQueue(seedTrack, queueSize);
+      return { success: true, queue: smartQueue };
+    } catch (error) {
+      console.error('Error generating smart queue:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('queue:add-smart', async (_, additionalCount?: number) => {
+    try {
+      const updatedQueue = await playbackService.addToQueueSmart(additionalCount);
+      return { success: true, queue: updatedQueue };
+    } catch (error) {
+      console.error('Error adding smart recommendations:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('queue:get-stats', async () => {
+    try {
+      const stats = playbackService.getQueueStats();
+      return { success: true, stats };
+    } catch (error) {
+      console.error('Error getting queue stats:', error);
       throw error;
     }
   });

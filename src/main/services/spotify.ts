@@ -146,6 +146,64 @@ export class SpotifyService {
     }
   }
 
+  public async getAudioFeatures(trackIds: string | string[]): Promise<any> {
+    await this.ensureValidToken();
+    
+    try {
+      const ids = Array.isArray(trackIds) ? trackIds.join(',') : trackIds;
+      const response = await this.client.get(`/audio-features/${ids}`);
+      return Array.isArray(trackIds) ? response.data.audio_features : response.data;
+    } catch (error) {
+      console.error('Failed to get audio features:', error);
+      throw new Error('Failed to fetch audio features');
+    }
+  }
+
+  public async getTrackAnalysis(trackId: string): Promise<any> {
+    await this.ensureValidToken();
+    
+    try {
+      const response = await this.client.get(`/audio-analysis/${trackId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get track analysis:', error);
+      throw new Error('Failed to fetch track analysis');
+    }
+  }
+
+  public async getRecommendations(options: {
+    seed_tracks?: string[];
+    seed_artists?: string[];
+    seed_genres?: string[];
+    limit?: number;
+    target_energy?: number;
+    target_danceability?: number;
+    target_valence?: number;
+    target_tempo?: number;
+  }): Promise<any> {
+    await this.ensureValidToken();
+    
+    try {
+      const params: any = {
+        limit: options.limit || 20,
+      };
+
+      if (options.seed_tracks) params.seed_tracks = options.seed_tracks.join(',');
+      if (options.seed_artists) params.seed_artists = options.seed_artists.join(',');
+      if (options.seed_genres) params.seed_genres = options.seed_genres.join(',');
+      if (options.target_energy !== undefined) params.target_energy = options.target_energy;
+      if (options.target_danceability !== undefined) params.target_danceability = options.target_danceability;
+      if (options.target_valence !== undefined) params.target_valence = options.target_valence;
+      if (options.target_tempo !== undefined) params.target_tempo = options.target_tempo;
+
+      const response = await this.client.get('/recommendations', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get recommendations:', error);
+      throw new Error('Failed to fetch recommendations');
+    }
+  }
+
   public async getAlbumTracks(id: string, limit: number = 50, offset: number = 0): Promise<Track[]> {
     await this.ensureValidToken();
     

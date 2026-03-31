@@ -1,11 +1,15 @@
 import { EventEmitter } from 'events';
 import { StreamService } from './streamer';
 import { DiscordRPCService } from './discordRPC';
+import { YouTubeStreamingService } from './youtubeStreaming';
+import { QueueRecommendationService } from './queueRecommendation';
 import { Track, PlaybackState } from '../../shared/types';
 
 export class PlaybackService extends EventEmitter {
   private streamService: StreamService;
   private discordRPC: DiscordRPCService;
+  private youtubeService: YouTubeStreamingService;
+  private recommendationService: QueueRecommendationService;
   private currentTrack: Track | null = null;
   private isPlaying: boolean = false;
   private volume: number = 1.0;
@@ -13,15 +17,23 @@ export class PlaybackService extends EventEmitter {
   private duration: number = 0;
   private buffered: number = 0;
   private updateInterval: NodeJS.Timeout | null = null;
+  private queue: Track[] = [];
+  private nextTrack: Track | null = null;
+  private preloadedStream: any = null;
+  private preloadThreshold: number = 0.7; // Preload when 70% of current track is played
 
-  constructor(streamService: StreamService) {
+  constructor(streamService: StreamService, spotifyService?: any) {
     super();
     this.streamService = streamService;
+    this.youtubeService = new YouTubeStreamingService();
     this.discordRPC = new DiscordRPCService();
+    this.recommendationService = spotifyService ? new QueueRecommendationService(spotifyService) : null!;
   }
 
-  public async play(track: Track): Promise<void> {
+  public async play(track: Track): Promise<{ streamUrl: string; track: Track }> {
     try {
+      console.log('Playing track:', track.name);
+      
       // Stop current playback if any
       if (this.currentTrack && this.currentTrack.id !== track.id) {
         await this.stop();
@@ -35,30 +47,43 @@ export class PlaybackService extends EventEmitter {
       this.discordRPC.updateTrack(track);
       this.discordRPC.updatePlayingState(true);
 
-      // Start the stream - use fast streaming for better performance
-      const stream = await this.streamService.getStreamWithFastBuffer(track);
+      // Check if this is a Spotify track and convert to YouTube
+      let playbackTrack = track;
+      if (track.uri.startsWith('spotify:')) {
+        console.log('Spotify track detected, searching YouTube...');
+        try {
+          const searchQuery = `${track.artists[0]?.name || ''} ${track.name}`;
+          const youtubeTracks = await this.youtubeService.searchTracks(searchQuery);
+          
+          if (youtubeTracks.length > 0) {
+            playbackTrack = youtubeTracks[0];
+            console.log('Found YouTube track:', playbackTrack.name, 'by', playbackTrack.artists[0]?.name);
+          } else {
+            throw new Error(`No YouTube results found for: ${searchQuery}`);
+          }
+        } catch (searchError) {
+          console.error('YouTube search failed:', searchError);
+          throw new Error(`Failed to find YouTube version of track: ${track.name}`);
+        }
+      }
+
+      // Get streaming URL from YouTube service
+      const videoId = playbackTrack.uri.replace('youtube:', '');
+      const streamInfo = await this.youtubeService.getStreamUrl(videoId);
+      console.log('Streaming URL obtained for frontend:', streamInfo.streamUrl.substring(0, 50) + '...');
       
       // Emit playback state change
       this.isPlaying = true;
       this.emitStateChange();
 
-      // Start progress tracking
-      this.startProgressTracking();
+      // Return a local proxy URL instead of direct YouTube URL
+      const proxyUrl = `http://localhost:3001/stream/${videoId}`;
+      console.log('Returning proxy URL for frontend:', proxyUrl);
 
-      // Handle stream events
-      stream.on('data', (chunk) => {
-        // Update buffer progress
-        this.buffered = Math.min(this.buffered + chunk.length / 1000, this.duration);
-        this.emit('buffer-update', this.buffered);
-      });
-
-      stream.on('end', () => {
-        this.onTrackEnd();
-      });
-
-      stream.on('error', (error) => {
-        this.handleError(error);
-      });
+      return {
+        streamUrl: proxyUrl,
+        track: playbackTrack
+      };
 
     } catch (error) {
       this.handleError(error);
@@ -88,6 +113,9 @@ export class PlaybackService extends EventEmitter {
     if (this.currentTrack) {
       this.streamService.stopStream(this.currentTrack.id);
     }
+    
+    // Clear preloaded stream
+    this.clearPreloadedStream();
     
     this.isPlaying = false;
     this.currentTime = 0;
@@ -152,6 +180,15 @@ export class PlaybackService extends EventEmitter {
         this.currentTime += 0.1; // Update every 100ms
         this.emitStateChange();
 
+        // Check if we should preload next track
+        if (this.duration > 0) {
+          const progress = this.currentTime / this.duration;
+          if (progress >= this.preloadThreshold) {
+            console.log(`Progress: ${(progress * 100).toFixed(1)}%, triggering preload (threshold: ${(this.preloadThreshold * 100).toFixed(1)}%)`);
+            this.startPreloadingNext();
+          }
+        }
+
         // Check if track has ended
         if (this.currentTime >= this.duration) {
           this.onTrackEnd();
@@ -168,10 +205,35 @@ export class PlaybackService extends EventEmitter {
   }
 
   private onTrackEnd(): void {
+    console.log('Track ended, checking for next track...');
+    console.log('Queue length:', this.queue.length);
+    console.log('Has preloaded stream:', !!this.preloadedStream);
+    console.log('Has next track:', !!this.nextTrack);
+    
     this.isPlaying = false;
     this.stopProgressTracking();
-    this.emitStateChange();
-    this.emit('track-ended');
+    
+    // Automatically play next track if available
+    if (this.preloadedStream && this.nextTrack) {
+      console.log('Track ended, playing preloaded next track');
+      this.next().catch(error => {
+        console.error('Error playing next track:', error);
+        this.emitStateChange();
+        this.emit('track-ended');
+      });
+    } else if (this.queue.length > 0) {
+      console.log('Track ended, playing next track from queue');
+      this.next().catch(error => {
+        console.error('Error playing next track:', error);
+        this.emitStateChange();
+        this.emit('track-ended');
+      });
+    } else {
+      console.log('Track ended, no next track available - stopping playback');
+      this.currentTrack = null;
+      this.emitStateChange();
+      this.emit('track-ended');
+    }
   }
 
   private handleError(error: any): void {
@@ -183,15 +245,221 @@ export class PlaybackService extends EventEmitter {
   }
 
   public async next(): Promise<void> {
-    // This would be implemented with a queue system
-    // For now, just stop current playback
-    await this.stop();
+    console.log('Next() called - Queue length:', this.queue.length, 'Has preloaded:', !!this.preloadedStream);
+    
+    // Try to play preloaded track first
+    if (this.preloadedStream && this.nextTrack) {
+      const track = this.nextTrack;
+      const stream = this.preloadedStream;
+      this.clearPreloadedStream();
+      
+      // Remove the track from queue since we're playing it
+      if (this.queue.length > 0 && this.queue[0].id === track.id) {
+        this.queue.shift();
+        this.emit('queue-updated', this.queue);
+      }
+      
+      // Stop current track
+      if (this.currentTrack) {
+        this.streamService.stopStream(this.currentTrack.id);
+      }
+      
+      // Set up preloaded track
+      this.currentTrack = track;
+      this.duration = track.duration_ms / 1000;
+      this.currentTime = 0;
+      this.isPlaying = true;
+      
+      // Update Discord RPC
+      this.discordRPC.updateTrack(track);
+      this.discordRPC.updatePlayingState(true);
+      
+      this.emitStateChange();
+      this.startProgressTracking();
+      
+      // Handle preloaded stream events
+      stream.on('data', (chunk: any) => {
+        // Update buffer progress
+        this.buffered = Math.min(this.buffered + chunk.length / 1000, this.duration);
+        this.emit('buffer-update', this.buffered);
+      });
+
+      stream.on('end', () => {
+        this.onTrackEnd();
+      });
+
+      stream.on('error', (error: any) => {
+        this.handleError(error);
+      });
+      
+      // Start preloading next track
+      this.startPreloadingNext();
+      
+      this.emit('track-changed', track);
+      console.log('Successfully switched to preloaded track:', track.name);
+    } else if (this.queue.length > 0) {
+      // Play next track from queue
+      const nextTrack = this.queue.shift()!;
+      console.log('Playing next track from queue:', nextTrack.name);
+      await this.play(nextTrack);
+      this.emit('track-changed', nextTrack);
+    } else {
+      // No next track available
+      console.log('No next track available, stopping playback');
+      await this.stop();
+    }
   }
 
   public async previous(): Promise<void> {
-    // This would be implemented with a queue system
-    // For now, just stop current playback
-    await this.stop();
+    // For now, just restart current track or stop
+    if (this.currentTrack) {
+      if (this.currentTime > 3) {
+        // Restart current track if more than 3 seconds have passed
+        this.currentTime = 0;
+        this.emitStateChange();
+      } else {
+        // Stop if less than 3 seconds (user wants previous track)
+        await this.stop();
+      }
+    }
+  }
+
+  // Queue management methods
+  public setQueue(tracks: Track[]): void {
+    this.queue = tracks;
+    this.emit('queue-updated', this.queue);
+    
+    // Start preloading if we have tracks and are currently playing
+    if (this.queue.length > 0 && this.isPlaying && !this.preloadedStream) {
+      console.log('Queue set with tracks, starting preload');
+      this.startPreloadingNext();
+    }
+  }
+
+  public addToQueue(track: Track): void {
+    this.queue.push(track);
+    this.emit('queue-updated', this.queue);
+    this.emit('track-added-to-queue', track);
+    
+    // Start preloading if this is the first track and we're currently playing
+    if (this.queue.length === 1 && this.isPlaying && !this.preloadedStream) {
+      console.log('First track added to queue, starting preload');
+      this.startPreloadingNext();
+    }
+  }
+
+  public removeFromQueue(index: number): void {
+    if (index >= 0 && index < this.queue.length) {
+      const removedTrack = this.queue.splice(index, 1)[0];
+      this.emit('queue-updated', this.queue);
+      this.emit('track-removed-from-queue', removedTrack, index);
+    }
+  }
+
+  public getQueue(): Track[] {
+    return [...this.queue];
+  }
+
+  public clearQueue(): void {
+    this.queue = [];
+    this.clearPreloadedStream();
+    this.emit('queue-updated', this.queue);
+  }
+
+// ... (rest of the code remains the same)
+  // Smart queue methods
+  public async generateSmartQueue(seedTrack: Track, queueSize: number = 20): Promise<Track[]> {
+    if (!this.recommendationService) {
+      console.warn('Recommendation service not available');
+      return [];
+    }
+
+    try {
+      const smartQueue = await this.recommendationService.generateSmartQueue(seedTrack, queueSize);
+      console.log(`Generated smart queue with ${smartQueue.length} tracks for "${seedTrack.name}"`);
+      return smartQueue;
+    } catch (error) {
+      console.error('Error generating smart queue:', error);
+      return [];
+    }
+  }
+
+  public async addToQueueSmart(additionalCount: number = 10): Promise<Track[]> {
+    if (!this.recommendationService || this.queue.length === 0) {
+      return this.queue;
+    }
+
+    try {
+      const updatedQueue = await this.recommendationService.addToQueue(this.queue, additionalCount);
+      this.queue = updatedQueue;
+      this.emit('queue-updated', this.queue);
+      console.log(`Added ${additionalCount} smart recommendations to queue`);
+      return this.queue;
+    } catch (error) {
+      console.error('Error adding smart recommendations:', error);
+      return this.queue;
+    }
+  }
+
+  public getQueueStats(): any {
+    if (!this.recommendationService) {
+      return { totalTracks: this.queue.length, avgEnergy: 0, avgTempo: 0, genreDistribution: {} };
+    }
+
+    return this.recommendationService.getQueueStats(this.queue);
+  }
+
+  // Preloading methods
+  private async startPreloadingNext(): Promise<void> {
+    if (this.preloadedStream || this.queue.length === 0) {
+      console.log(`Skipping preload - already preloaded: ${!!this.preloadedStream}, queue empty: ${this.queue.length === 0}`);
+      return; // Already preloaded or no next track
+    }
+
+    try {
+      this.nextTrack = this.queue[0];
+      console.log(`Starting preload for next track: ${this.nextTrack.name} (Queue has ${this.queue.length} tracks)`);
+      
+      // Preload the stream but don't start playing it
+      this.preloadedStream = await this.streamService.getStreamWithFastBuffer(this.nextTrack);
+      
+      // Add event handlers for preloaded stream
+      this.preloadedStream.on('error', (error: any) => {
+        console.error('Preloaded stream error:', error);
+        this.clearPreloadedStream();
+      });
+
+      this.emit('next-track-preloaded', this.nextTrack);
+      console.log(`Successfully preloaded next track: ${this.nextTrack.name}`);
+    } catch (error) {
+      console.error('Failed to preload next track:', error);
+      this.clearPreloadedStream();
+    }
+  }
+
+  private clearPreloadedStream(): void {
+    if (this.preloadedStream && this.nextTrack) {
+      console.log(`Clearing preloaded stream for: ${this.nextTrack.name}`);
+      this.preloadedStream.destroy();
+      this.preloadedStream = null;
+      this.nextTrack = null;
+    }
+  }
+
+  public setPreloadThreshold(threshold: number): void {
+    this.preloadThreshold = Math.max(0.1, Math.min(0.95, threshold));
+  }
+
+  public getPreloadThreshold(): number {
+    return this.preloadThreshold;
+  }
+
+  public isNextTrackPreloaded(): boolean {
+    return this.preloadedStream !== null;
+  }
+
+  public getNextTrack(): Track | null {
+    return this.nextTrack || (this.queue.length > 0 ? this.queue[0] : null);
   }
 
   public setCrossfade(duration: number): void {
@@ -214,6 +482,7 @@ export class PlaybackService extends EventEmitter {
 
   public destroy(): void {
     this.stop();
+    this.clearQueue();
     this.discordRPC.disconnect();
     this.removeAllListeners();
   }

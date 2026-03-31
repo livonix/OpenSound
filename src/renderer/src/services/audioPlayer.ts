@@ -2,93 +2,65 @@ import { Track } from '../../../shared/types';
 import { usePlayerStore } from '../stores/playerStore';
 
 export class AudioPlayerService {
-  private audio: HTMLAudioElement;
   private isInitialized = false;
   private onEndedCallback?: () => void;
   private currentTrack: Track | null = null;
-  private updateInterval?: NodeJS.Timeout;
+  private queue: Track[] = [];
+  private isPreloadingNext = false;
+  private audio: HTMLAudioElement | null = null;
 
   constructor() {
-    this.audio = new Audio();
-    this.setupAudioElement();
+    this.setupEventListeners();
   }
 
-  private setupAudioElement(): void {
-    // Time update
-    this.audio.addEventListener('timeupdate', () => {
-      usePlayerStore.getState().setCurrentTime(this.audio.currentTime);
-    });
+  private setupEventListeners(): void {
+    // Listen for backend playback events
+    const electronAPI = (window as any).electronAPI;
+    
+    if (electronAPI) {
+      // Queue events
+      electronAPI.onPlaybackQueueUpdated?.((queue: Track[]) => {
+        this.queue = queue;
+        console.log('Queue updated from backend:', queue.length, 'tracks');
+      });
 
-    // Metadata loaded
-    this.audio.addEventListener('loadedmetadata', () => {
-      usePlayerStore.getState().setDuration(this.audio.duration);
-    });
+      electronAPI.onPlaybackTrackAddedToQueue?.((track: Track) => {
+        console.log('Track added to queue from backend:', track.name);
+      });
 
-    // Progress
-    this.audio.addEventListener('progress', () => {
-      if (this.audio.buffered.length > 0) {
-        usePlayerStore.getState().setBuffered(this.audio.buffered.end(this.audio.buffered.length - 1));
-      }
-    });
+      electronAPI.onPlaybackNextTrackPreloaded?.((track: Track) => {
+        console.log('Next track preloaded from backend:', track.name);
+        this.isPreloadingNext = true;
+      });
 
-    // Track ended
-    this.audio.addEventListener('ended', () => {
-      const { repeat, setPlaying } = usePlayerStore.getState();
-      
-      if (repeat === 'one') {
-        // Repeat current track
-        this.audio.currentTime = 0;
-        this.audio.play();
-      } else if (repeat === 'all') {
-        // Go to next track (or stop if last track)
-        this.next().catch(() => {
-          setPlaying(false);
-        });
-      } else {
-        // No repeat - stop playing
-        setPlaying(false);
-      }
-      
-      if (this.onEndedCallback) {
-        this.onEndedCallback();
-      }
-    });
+      electronAPI.onPlaybackTrackChanged?.((track: Track) => {
+        console.log('Track changed from backend:', track.name);
+        this.currentTrack = track;
+        usePlayerStore.getState().setCurrentTrack(track);
+        usePlayerStore.getState().setPlaying(true);
+      });
 
-    // Error handling
-    this.audio.addEventListener('error', (e) => {
-      console.error('Audio error:', e);
-      usePlayerStore.getState().setPlaying(false);
-    });
+      electronAPI.onPlaybackTrackEnded?.(() => {
+        console.log('Track ended from backend');
+        usePlayerStore.getState().setPlaying(false);
+      });
+    }
 
     this.isInitialized = true;
   }
 
   public async playTrack(track: Track): Promise<void> {
     try {
-      console.log('=== playTrack called ===');
+      console.log('=== playTrack called (using backend) ===');
       console.log('Track:', track.name, 'by', track.artists[0]?.name);
       
-      // Stop current playback
-      this.stop();
-
-      // Check if electronAPI is available
-      console.log('Checking electronAPI...');
       const electronAPI = (window as any).electronAPI;
       
       if (!electronAPI) {
-        console.error('Electron API not available');
-        throw new Error('Electron API not available - make sure the app is running in Electron');
+        throw new Error('Electron API not available');
       }
-      console.log('electronAPI found, checking methods...');
 
-      // Check if getAudioUrl method exists
-      if (typeof electronAPI.getAudioUrl !== 'function') {
-        console.error('getAudioUrl method not found');
-        throw new Error('getAudioUrl method not available in Electron API');
-      }
-      console.log('getAudioUrl method found, proceeding...');
-
-      // Set current track
+      // Set current track in store
       this.currentTrack = track;
       usePlayerStore.getState().setCurrentTrack(track);
 
@@ -102,51 +74,67 @@ export class AudioPlayerService {
         }
       }
 
-      // Get YouTube audio URL using Electron API (yt-dlp)
-      const searchQuery = `${track.artists[0]?.name || ''} ${track.name}`;
-      console.log('Searching YouTube for:', searchQuery);
-      const tracks = await electronAPI.searchYouTube(searchQuery);
-      
-      console.log('YouTube tracks found:', tracks.length);
-      console.log('YouTube tracks data:', tracks);
-      
-      let finalTracks = tracks;
-      
-      if (tracks.length === 0) {
-        // Try a simpler search without artist name
-        console.log('Trying simpler YouTube search...');
-        const simpleQuery = track.name;
-        const simpleTracks = await electronAPI.searchYouTube(simpleQuery);
-        console.log('Simple YouTube search found:', simpleTracks.length);
+      // Use backend playback service to get streaming URL
+      try {
+        const result = await electronAPI.playbackPlay(track);
+        console.log('Backend playback result:', result);
         
-        if (simpleTracks.length === 0) {
-          throw new Error(`No tracks found for "${searchQuery}" or "${simpleQuery}"`);
-        }
-        
-        finalTracks = simpleTracks;
-      }
+        if (result && result.streamUrl) {
+          // Clean up previous audio element
+          if (this.audio) {
+            this.audio.pause();
+            this.audio.src = '';
+          }
 
-      // Get audio URL for the first track
-      console.log('Getting YouTube audio URL for track:', finalTracks[0].id);
-      const audioUrl = await electronAPI.getAudioUrl(finalTracks[0].id);
-      
-      console.log('Audio URL received:', audioUrl);
-      console.log('Audio URL type:', typeof audioUrl);
-      console.log('Audio URL length:', audioUrl?.length);
-      
-      // Validate audio URL
-      if (!audioUrl || typeof audioUrl !== 'string' || audioUrl === '' || audioUrl.startsWith('http://localhost')) {
-        console.error('Invalid audio URL detected:', audioUrl);
-        throw new Error('Invalid or empty audio URL received');
-      }
+          // Create new audio element
+          this.audio = new Audio();
+          this.audio.src = result.streamUrl;
+          this.audio.crossOrigin = 'anonymous';
+          
+          // Set up audio event listeners
+          this.audio.addEventListener('timeupdate', () => {
+            if (this.audio) {
+              usePlayerStore.getState().setCurrentTime(this.audio.currentTime);
+            }
+          });
 
-      // Set audio source and play
-      if (this.audio) {
-        // IMPORTANT: Only set src when we have a valid URL
-        this.audio.src = audioUrl;
-        console.log('Audio src set to:', audioUrl);
-        
-        try {
+          this.audio.addEventListener('loadedmetadata', () => {
+            if (this.audio) {
+              usePlayerStore.getState().setDuration(this.audio.duration);
+            }
+          });
+
+          this.audio.addEventListener('progress', () => {
+            if (this.audio && this.audio.buffered.length > 0) {
+              usePlayerStore.getState().setBuffered(this.audio.buffered.end(this.audio.buffered.length - 1));
+            }
+          });
+
+          this.audio.addEventListener('ended', () => {
+            console.log('Track ended, triggering next');
+            this.next().catch(() => {
+              usePlayerStore.getState().setPlaying(false);
+            });
+          });
+
+          this.audio.addEventListener('error', (e) => {
+            console.error('Audio error:', e);
+            console.error('Audio src:', this.audio?.src);
+            console.error('Audio error code:', this.audio?.error?.code);
+            console.error('Audio error message:', this.audio?.error?.message);
+            
+          // Try to fallback to direct YouTube URL if proxy fails
+          if (this.audio?.src.includes('localhost:3001')) {
+            console.log('Proxy failed, trying direct URL fallback...');
+            // This would require getting the direct URL from backend
+            // For now, just stop playback
+            usePlayerStore.getState().setPlaying(false);
+          } else {
+            usePlayerStore.getState().setPlaying(false);
+          }
+        });
+
+          // Play the audio
           await this.audio.play();
           usePlayerStore.getState().setPlaying(true);
           
@@ -160,11 +148,13 @@ export class AudioPlayerService {
             }
           }
           
-          console.log('Audio playing successfully');
-        } catch (playError) {
-          console.error('Failed to play audio:', playError);
-          throw playError;
+          console.log('Track playing successfully via frontend with backend URL');
+        } else {
+          throw new Error('No streaming URL received from backend');
         }
+      } catch (backendError) {
+        console.error('Backend playback failed:', backendError);
+        throw backendError;
       }
     } catch (error) {
       console.error('Error playing track:', error);
@@ -237,15 +227,28 @@ export class AudioPlayerService {
   
   public async next(): Promise<void> {
     const state = usePlayerStore.getState();
-    const { queue, currentIndex } = state;
-    const nextIndex = currentIndex + 1;
-    if (queue && queue.length > 0 && nextIndex < queue.length) {
-      const nextTrack = queue[nextIndex];
-      state.setCurrentIndex(nextIndex);
-      state.setCurrentTrack(nextTrack);
+    const { queue } = state;
+    
+    if (queue && queue.length > 0) {
+      // Play next track from queue
+      const nextTrack = queue[0];
+      console.log('Playing next track from queue:', nextTrack.name);
       await this.playTrack(nextTrack);
+      
+      // Remove the played track from queue
+      this.queue.shift();
+      usePlayerStore.getState().setQueue(this.queue);
     } else {
-      state.setPlaying(false);
+      console.log('No next track available');
+      usePlayerStore.getState().setPlaying(false);
+    }
+  }
+
+  public async previous(): Promise<void> {
+    // For now, just restart current track
+    if (this.audio && this.currentTrack) {
+      this.audio.currentTime = 0;
+      console.log('Restarting current track');
     }
   }
 
@@ -254,16 +257,142 @@ export class AudioPlayerService {
   }
 
   public isPlaying(): boolean {
-    return this.audio ? !this.audio.paused : false;
+    return usePlayerStore.getState().isPlaying;
+  }
+
+  // Queue management methods
+  public async setQueue(tracks: Track[]): Promise<void> {
+    const electronAPI = (window as any).electronAPI;
+    if (electronAPI) {
+      try {
+        await electronAPI.queueSet(tracks);
+        console.log('Backend queue set with', tracks.length, 'tracks');
+        this.queue = tracks;
+        usePlayerStore.getState().setQueue(tracks);
+      } catch (error: any) {
+        console.error('Failed to set backend queue:', error);
+      }
+    }
+  }
+
+  public async addToQueue(track: Track): Promise<void> {
+    const electronAPI = (window as any).electronAPI;
+    if (electronAPI) {
+      try {
+        await electronAPI.queueAdd(track);
+        console.log('Track added to backend queue:', track.name);
+        this.queue.push(track);
+        usePlayerStore.getState().setQueue(this.queue);
+      } catch (error: any) {
+        console.error('Failed to add track to backend queue:', error);
+      }
+    }
+  }
+
+  public async removeFromQueue(index: number): Promise<void> {
+    const electronAPI = (window as any).electronAPI;
+    if (electronAPI) {
+      try {
+        await electronAPI.queueRemove(index);
+        console.log('Track removed from backend queue at index:', index);
+        if (index >= 0 && index < this.queue.length) {
+          this.queue.splice(index, 1);
+          usePlayerStore.getState().setQueue(this.queue);
+        }
+      } catch (error: any) {
+        console.error('Failed to remove track from backend queue:', error);
+      }
+    }
+  }
+
+  public async getQueue(): Promise<Track[]> {
+    const electronAPI = (window as any).electronAPI;
+    if (electronAPI) {
+      try {
+        const queue = await electronAPI.queueGet();
+        this.queue = queue;
+        return queue;
+      } catch (error: any) {
+        console.error('Failed to get backend queue:', error);
+        return this.queue;
+      }
+    }
+    return this.queue;
+  }
+
+  public async clearQueue(): Promise<void> {
+    const electronAPI = (window as any).electronAPI;
+    if (electronAPI) {
+      try {
+        await electronAPI.queueClear();
+        console.log('Backend queue cleared');
+        this.queue = [];
+        usePlayerStore.getState().setQueue([]);
+      } catch (error: any) {
+        console.error('Failed to clear backend queue:', error);
+      }
+    }
+  }
+
+  // Preloading methods
+  public async setPreloadThreshold(threshold: number): Promise<void> {
+    const electronAPI = (window as any).electronAPI;
+    if (electronAPI) {
+      try {
+        await electronAPI.playbackSetPreloadThreshold(threshold);
+        console.log('Backend preload threshold set to:', threshold);
+      } catch (error: any) {
+        console.error('Failed to set backend preload threshold:', error);
+      }
+    }
+  }
+
+  public async getPreloadThreshold(): Promise<number> {
+    const electronAPI = (window as any).electronAPI;
+    if (electronAPI) {
+      try {
+        return await electronAPI.playbackGetPreloadThreshold();
+      } catch (error: any) {
+        console.error('Failed to get backend preload threshold:', error);
+        return 0.7; // Default value
+      }
+    }
+    return 0.7;
+  }
+
+  public async isNextTrackPreloaded(): Promise<boolean> {
+    const electronAPI = (window as any).electronAPI;
+    if (electronAPI) {
+      try {
+        return await electronAPI.playbackIsNextTrackPreloaded();
+      } catch (error: any) {
+        console.error('Failed to check if next track is preloaded:', error);
+        return false;
+      }
+    }
+    return false;
+  }
+
+  public async getNextTrack(): Promise<Track | null> {
+    const electronAPI = (window as any).electronAPI;
+    if (electronAPI) {
+      try {
+        return await electronAPI.playbackGetNextTrack();
+      } catch (error: any) {
+        console.error('Failed to get next track from backend:', error);
+        return null;
+      }
+    }
+    return null;
   }
 
   public destroy(): void {
     this.stop();
-    if (this.updateInterval) {
-      clearInterval(this.updateInterval);
-    }
-    this.audio.src = '';
-    this.audio = null!;
+    this.queue = [];
+    this.currentTrack = null;
+    this.isPreloadingNext = false;
+    this.audio = null;
+    console.log('AudioPlayerService destroyed');
   }
 }
 

@@ -7,6 +7,7 @@ config();
 
 import { setupIpcHandlers } from './ipc/index';
 import { ConfigService } from './services/config';
+import { StreamProxyService } from './services/streamProxy';
 import { UpdaterService } from './services/updater';
 
 class OpenSoundApp {
@@ -14,11 +15,13 @@ class OpenSoundApp {
   private configService: ConfigService;
   private dirPath: string;
   private updaterService: UpdaterService;
+  private streamProxyService: StreamProxyService;
 
   constructor(dirPath?: string) {
     this.configService = new ConfigService();
     this.dirPath = dirPath || __dirname;
     this.updaterService = new UpdaterService();
+    this.streamProxyService = new StreamProxyService();
   }
 
   private createWindow(): void {
@@ -156,6 +159,14 @@ class OpenSoundApp {
     
     console.log('🚀 YouTube streaming service ready (no Java required)');
     
+    // Start stream proxy server
+    try {
+      await this.streamProxyService.start();
+      console.log('🌐 Stream proxy server started');
+    } catch (error) {
+      console.error('Failed to start stream proxy server:', error);
+    }
+    
     // Initialize config
     await this.configService.initialize();
     console.log('Config initialized');
@@ -192,6 +203,7 @@ class OpenSoundApp {
 
     app.on('before-quit', async () => {
       console.log('Application closing, YouTube streaming service cleanup...');
+      await this.streamProxyService.stop();
     });
 
     app.on('web-contents-created', (_, contents: any) => {
