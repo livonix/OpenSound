@@ -42,6 +42,8 @@ export interface ElectronAPI {
   
   // Discord RPC
   testDiscordRPC: () => Promise<{ success: boolean; error?: string }>;
+  updateDiscordTrack: (track: any) => Promise<{ success: boolean; error?: string }>;
+  updateDiscordPlayingState: (isPlaying: boolean) => Promise<{ success: boolean; error?: string }>;
 }
 
 // Expose the API to the renderer process
@@ -119,7 +121,13 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke('app:get-version'),
 
   testDiscordRPC: () => 
-    ipcRenderer.invoke('discord:test')
+    ipcRenderer.invoke('discord:test'),
+
+  updateDiscordTrack: (track: any) => 
+    ipcRenderer.invoke('discord:update-track', track),
+
+  updateDiscordPlayingState: (isPlaying: boolean) => 
+    ipcRenderer.invoke('discord:update-playing-state', isPlaying)
 };
 
 // Expose the API to the renderer process

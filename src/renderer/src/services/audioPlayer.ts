@@ -79,6 +79,16 @@ export class AudioPlayerService {
       this.currentTrack = track;
       usePlayerStore.getState().setCurrentTrack(track);
 
+      // Update Discord RPC
+      if (electronAPI.updateDiscordTrack) {
+        try {
+          await electronAPI.updateDiscordTrack(track);
+          console.log('Discord RPC track updated');
+        } catch (discordError) {
+          console.error('Failed to update Discord RPC track:', discordError);
+        }
+      }
+
       // Get YouTube audio URL using Electron API (yt-dlp)
       const searchQuery = `${track.artists[0]?.name || ''} ${track.name}`;
       console.log('Searching YouTube for:', searchQuery);
@@ -126,6 +136,17 @@ export class AudioPlayerService {
         try {
           await this.audio.play();
           usePlayerStore.getState().setPlaying(true);
+          
+          // Update Discord RPC playing state
+          if (electronAPI.updateDiscordPlayingState) {
+            try {
+              await electronAPI.updateDiscordPlayingState(true);
+              console.log('Discord RPC playing state updated');
+            } catch (discordError) {
+              console.error('Failed to update Discord RPC playing state:', discordError);
+            }
+          }
+          
           console.log('Audio playing successfully');
         } catch (playError) {
           console.error('Failed to play audio:', playError);
@@ -143,6 +164,14 @@ export class AudioPlayerService {
     if (this.audio && !this.audio.paused) {
       this.audio.pause();
       usePlayerStore.getState().setPlaying(false);
+      
+      // Update Discord RPC
+      const electronAPI = (window as any).electronAPI;
+      if (electronAPI && electronAPI.updateDiscordPlayingState) {
+        electronAPI.updateDiscordPlayingState(false).catch((error: any) => {
+          console.error('Failed to update Discord RPC pause state:', error);
+        });
+      }
     }
   }
 
@@ -150,6 +179,14 @@ export class AudioPlayerService {
     if (this.audio && this.audio.paused) {
       this.audio.play();
       usePlayerStore.getState().setPlaying(true);
+      
+      // Update Discord RPC
+      const electronAPI = (window as any).electronAPI;
+      if (electronAPI && electronAPI.updateDiscordPlayingState) {
+        electronAPI.updateDiscordPlayingState(true).catch((error: any) => {
+          console.error('Failed to update Discord RPC resume state:', error);
+        });
+      }
     }
   }
 
@@ -160,6 +197,14 @@ export class AudioPlayerService {
       this.audio.removeAttribute('src');
       this.audio.load();
       usePlayerStore.getState().setPlaying(false);
+      
+      // Update Discord RPC
+      const electronAPI = (window as any).electronAPI;
+      if (electronAPI && electronAPI.updateDiscordPlayingState) {
+        electronAPI.updateDiscordPlayingState(false).catch((error: any) => {
+          console.error('Failed to update Discord RPC stop state:', error);
+        });
+      }
     }
   }
 

@@ -68,10 +68,12 @@ export class DiscordRPCService {
     }
 
     try {
-      const activity = {
+      // Get the album image URL if available
+      const imageUrl = this.currentTrack.album?.images?.[0]?.url || null;
+      
+      const activity: any = {
         details: `🎵 ${this.currentTrack.name}`,
         state: `👤 ${this.currentTrack.artists.map(a => a.name).join(', ')}`,
-        largeImageKey: 'music', // Using default Discord music icon
         largeImageText: 'OpenSound - Music Streaming',
         smallImageKey: 'playing',
         smallImageText: 'Playing',
@@ -84,6 +86,15 @@ export class DiscordRPCService {
           }
         ]
       };
+
+      // Use the track's album image if available, otherwise use default music icon
+      if (imageUrl) {
+        activity.largeImageKey = imageUrl;
+        console.log('🖼️ Using album image for Discord RPC:', imageUrl);
+      } else {
+        activity.largeImageKey = 'music';
+        console.log('🎵 Using default music icon for Discord RPC');
+      }
 
       await this.client.setActivity(activity);
       console.log('🎵 Discord RPC activity updated:', this.currentTrack.name);

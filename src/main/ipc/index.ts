@@ -44,6 +44,25 @@ export function setupIpcHandlers(): void {
     return { success: false, error: 'Discord RPC not available' };
   });
 
+  // Discord RPC update handlers
+  ipcMain.handle('discord:update-track', (_, track: Track) => {
+    const discordRPC = playbackService.getDiscordRPC();
+    if (discordRPC && discordRPC.updateTrack) {
+      discordRPC.updateTrack(track);
+      return { success: true };
+    }
+    return { success: false, error: 'Discord RPC not available' };
+  });
+
+  ipcMain.handle('discord:update-playing-state', (_, isPlaying: boolean) => {
+    const discordRPC = playbackService.getDiscordRPC();
+    if (discordRPC && discordRPC.updatePlayingState) {
+      discordRPC.updatePlayingState(isPlaying);
+      return { success: true };
+    }
+    return { success: false, error: 'Discord RPC not available' };
+  });
+
   // Spotify API handlers
   ipcMain.handle('spotify:search-tracks', async (_, query: string, limit: number = 20) => {
     try {
