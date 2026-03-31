@@ -11,7 +11,6 @@ import {
   PictureInPicture
 } from 'lucide-react';
 import { usePlayerStore } from '../stores/playerStore';
-import { usePlaybackAPI } from '../hooks/useElectronAPI';
 import { audioPlayer } from '../services/audioPlayer';
 
 export function Player() {
@@ -27,14 +26,6 @@ export function Player() {
     setCurrentTime,
   } = usePlayerStore();
 
-  const { 
-    playTrack, 
-    pausePlayback, 
-    resumePlayback, 
-    setVolume: setAPIVolume,
-    seekTo 
-  } = usePlaybackAPI();
-
   const progressBarRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [localVolume, setLocalVolume] = useState(volume);
@@ -48,13 +39,13 @@ export function Player() {
 
     try {
       if (isPlaying) {
-        await pausePlayback();
+        audioPlayer.pause();
         setPlaying(false);
       } else {
         if (currentTime === 0) {
-          await playTrack(currentTrack);
+          await audioPlayer.playTrack(currentTrack);
         } else {
-          await resumePlayback();
+          audioPlayer.resume();
         }
         setPlaying(true);
       }
@@ -72,7 +63,7 @@ export function Player() {
     const newTime = percentage * duration;
 
     setCurrentTime(newTime);
-    seekTo(newTime);
+    audioPlayer.seek(newTime);
   };
 
   const handleProgressDrag = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -90,7 +81,7 @@ export function Player() {
     const newVolume = parseFloat(e.target.value);
     setLocalVolume(newVolume);
     setVolume(newVolume);
-    await setAPIVolume(newVolume);
+    audioPlayer.setVolume(newVolume);
   };
 
   const formatTime = (time: number) => {
@@ -129,7 +120,7 @@ export function Player() {
             {currentTrack.name}
           </h4>
           <p className="text-xs text-spotify-gray truncate">
-            {currentTrack.artists.map(a => a.name).join(', ')}
+            {currentTrack.artists.map((a: any) => a.name).join(', ')}
           </p>
         </div>
 

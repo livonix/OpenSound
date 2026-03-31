@@ -39,6 +39,9 @@ export interface ElectronAPI {
   // Utilities
   openExternal: (url: string) => Promise<void>;
   getVersion: () => Promise<string>;
+  
+  // Discord RPC
+  testDiscordRPC: () => Promise<{ success: boolean; error?: string }>;
 }
 
 // Expose the API to the renderer process
@@ -113,7 +116,10 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.invoke('app:open-external', url),
   
   getVersion: () => 
-    ipcRenderer.invoke('app:get-version')
+    ipcRenderer.invoke('app:get-version'),
+
+  testDiscordRPC: () => 
+    ipcRenderer.invoke('discord:test')
 };
 
 // Expose the API to the renderer process

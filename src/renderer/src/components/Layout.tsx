@@ -8,14 +8,9 @@ import {
   Heart,
   ChevronLeft,
   ChevronRight,
-  Play,
-  Pause,
-  SkipBack,
-  SkipForward,
   Volume2,
   Maximize2
 } from 'lucide-react';
-import { usePlayerStore } from '../stores/playerStore';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -23,7 +18,6 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const location = useLocation();
-  const { currentTrack, isPlaying, setPlaying } = usePlayerStore();
 
   const sidebarItems = [
     { icon: Home, label: 'Home', path: '/' },
@@ -58,59 +52,19 @@ export function Layout({ children }: LayoutProps) {
 
         {/* Playlist Section */}
         <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <button className="btn-ghost flex-1 justify-start">
-              <PlusCircle size={20} />
-              <span>Create Playlist</span>
-            </button>
-          </div>
+          <button className="btn-ghost flex items-center gap-3 w-full justify-start">
+            <PlusCircle size={20} />
+            <span className="font-medium">Create Playlist</span>
+          </button>
           
-          <button className="btn-ghost flex-1 justify-start">
+          <button className="btn-ghost flex items-center gap-3 w-full justify-start">
             <Heart size={20} />
-            <span>Liked Songs</span>
+            <span className="font-medium">Liked Songs</span>
           </button>
         </div>
 
         {/* Divider */}
         <div className="border-t border-spotify-highlight my-6"></div>
-
-        {/* Mini Player */}
-        {currentTrack && (
-          <div className="mt-auto p-4 bg-spotify-highlight rounded-lg">
-            <div className="flex items-center gap-3 mb-3">
-              {currentTrack.album?.images?.[0] && (
-                <img
-                  src={currentTrack.album.images[0].url}
-                  alt={currentTrack.name}
-                  className="w-12 h-12 rounded"
-                />
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">
-                  {currentTrack.name}
-                </p>
-                <p className="text-xs text-spotify-gray truncate">
-                  {currentTrack.artists.map(a => a.name).join(', ')}
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-center gap-4">
-              <button className="text-spotify-gray hover:text-white transition-colors">
-                <SkipBack size={16} />
-              </button>
-              <button
-                onClick={() => setPlaying(!isPlaying)}
-                className="text-white hover:scale-105 transition-transform"
-              >
-                {isPlaying ? <Pause size={20} /> : <Play size={20} />}
-              </button>
-              <button className="text-spotify-gray hover:text-white transition-colors">
-                <SkipForward size={16} />
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Main Content */}

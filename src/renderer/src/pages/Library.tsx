@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Play, Heart, Download, MoreHorizontal } from 'lucide-react';
-import { usePlaylistAPI } from '../hooks/useElectronAPI';
+import { Plus, Play, Heart, Download, MoreHorizontal, TestTube } from 'lucide-react';
+import { usePlaylistAPI, useElectronAPI } from '../hooks/useElectronAPI';
 import { usePlayerStore } from '../stores/playerStore';
 import { Playlist, Track } from '@shared/types';
 
@@ -13,6 +13,7 @@ export function Library() {
   const [newPlaylistName, setNewPlaylistName] = useState('');
 
   const { getPlaylists, createPlaylist } = usePlaylistAPI();
+  const { api } = useElectronAPI();
   const { setCurrentTrack, setPlaying } = usePlayerStore();
 
   useEffect(() => {
@@ -45,6 +46,17 @@ export function Library() {
       setShowCreatePlaylist(false);
     } catch (error) {
       console.error('Failed to create playlist:', error);
+    }
+  };
+
+  const testDiscordRPC = async () => {
+    try {
+      if (api && api.testDiscordRPC) {
+        const result = await api.testDiscordRPC();
+        console.log('Discord RPC test result:', result);
+      }
+    } catch (error) {
+      console.error('Failed to test Discord RPC:', error);
     }
   };
 
@@ -127,13 +139,23 @@ export function Library() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold">Your Library</h1>
-        <button 
-          onClick={() => setShowCreatePlaylist(true)}
-          className="btn-primary flex items-center gap-2"
-        >
-          <Plus size={20} />
-          Create Playlist
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={testDiscordRPC}
+            className="btn-secondary flex items-center gap-2"
+            title="Test Discord RPC"
+          >
+            <TestTube size={20} />
+            Test RPC
+          </button>
+          <button 
+            onClick={() => setShowCreatePlaylist(true)}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Plus size={20} />
+            Create Playlist
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Track, PlaybackState } from '@shared/types';
+import { Track, PlaybackState } from '../../../shared/types';
 
 interface PlayerStore extends PlaybackState {
   queue: Track[];

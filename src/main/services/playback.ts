@@ -1,9 +1,11 @@
 import { EventEmitter } from 'events';
 import { StreamService } from './streamer';
+import { DiscordRPCService } from './discordRPC';
 import { Track, PlaybackState } from '../../shared/types';
 
 export class PlaybackService extends EventEmitter {
   private streamService: StreamService;
+  private discordRPC: DiscordRPCService;
   private currentTrack: Track | null = null;
   private isPlaying: boolean = false;
   private volume: number = 1.0;
@@ -15,6 +17,7 @@ export class PlaybackService extends EventEmitter {
   constructor(streamService: StreamService) {
     super();
     this.streamService = streamService;
+    this.discordRPC = new DiscordRPCService();
   }
 
   public async play(track: Track): Promise<void> {
@@ -27,6 +30,10 @@ export class PlaybackService extends EventEmitter {
       this.currentTrack = track;
       this.duration = track.duration_ms / 1000; // Convert to seconds
       this.currentTime = 0;
+
+      // Update Discord RPC
+      this.discordRPC.updateTrack(track);
+      this.discordRPC.updatePlayingState(true);
 
       // Start the stream - use fast streaming for better performance
       const stream = await this.streamService.getStreamWithFastBuffer(track);
@@ -63,6 +70,7 @@ export class PlaybackService extends EventEmitter {
     if (this.isPlaying) {
       this.isPlaying = false;
       this.stopProgressTracking();
+      this.discordRPC.updatePlayingState(false);
       this.emitStateChange();
     }
   }
@@ -71,6 +79,7 @@ export class PlaybackService extends EventEmitter {
     if (!this.isPlaying && this.currentTrack) {
       this.isPlaying = true;
       this.startProgressTracking();
+      this.discordRPC.updatePlayingState(true);
       this.emitStateChange();
     }
   }
@@ -84,6 +93,7 @@ export class PlaybackService extends EventEmitter {
     this.currentTime = 0;
     this.buffered = 0;
     this.stopProgressTracking();
+    this.discordRPC.updatePlayingState(false);
     this.emitStateChange();
   }
 
@@ -204,6 +214,11 @@ export class PlaybackService extends EventEmitter {
 
   public destroy(): void {
     this.stop();
+    this.discordRPC.disconnect();
     this.removeAllListeners();
+  }
+
+  public getDiscordRPC(): DiscordRPCService {
+    return this.discordRPC;
   }
 }

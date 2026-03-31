@@ -34,6 +34,16 @@ export function setupIpcHandlers(): void {
   playlistService = new PlaylistService();
   updaterService = new UpdaterService();
 
+  // Test Discord RPC
+  ipcMain.handle('discord:test', () => {
+    const discordRPC = playbackService.getDiscordRPC();
+    if (discordRPC && discordRPC.testConnection) {
+      discordRPC.testConnection();
+      return { success: true };
+    }
+    return { success: false, error: 'Discord RPC not available' };
+  });
+
   // Spotify API handlers
   ipcMain.handle('spotify:search-tracks', async (_, query: string, limit: number = 20) => {
     try {
