@@ -22,9 +22,10 @@ interface SearchResult {
 const SearchPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const initialQuery = searchParams.get('q') || '';
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [searchResults, setSearchResults] = useState<SearchResult | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [recentSearchQueries, setRecentSearchQueries] = useState<string[]>([]);
   const { categories, isLoading: categoriesLoading } = useDiscoveryData();
   const { recentlyPlayed } = useUserData();
   const { searchTracks, getArtist, getAlbum } = useSpotifyAPI();

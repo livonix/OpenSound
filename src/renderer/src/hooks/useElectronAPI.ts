@@ -118,7 +118,12 @@ export function usePlaylistAPI() {
     createPlaylist: api.createPlaylist,
     addTrackToPlaylist: api.addTrackToPlaylist,
     removeTrackFromPlaylist: api.removeTrackFromPlaylist,
-    getPlaylists: api.getPlaylists,
+    getPlaylists: async () => {
+      console.log('🎵 usePlaylistAPI.getPlaylists() called');
+      const result = await api.getPlaylists();
+      console.log('🎵 usePlaylistAPI.getPlaylists() result:', result);
+      return result;
+    },
     isLoading: false
   };
 }

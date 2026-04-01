@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 interface TopNavBarProps {
   searchPlaceholder?: string;
@@ -10,6 +10,8 @@ const TopNavBar: React.FC<TopNavBarProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
+  const isSearchPage = location.pathname === '/search';
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
@@ -30,25 +32,27 @@ const TopNavBar: React.FC<TopNavBarProps> = ({
 
   return (
     <header className="fixed top-0 right-0 w-[calc(100%-16rem)] bg-transparent backdrop-blur-xl flex justify-between items-center px-8 h-16 z-40">
-      {/* Search Bar */}
-      <div className="flex items-center flex-1 max-w-md">
-        <div className="relative w-full">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">
-            search
-          </span>
-          <input
-            type="text"
-            placeholder={searchPlaceholder}
-            value={searchQuery}
-            onChange={handleSearch}
-            onFocus={handleSearchClick}
-            className="w-full bg-surface-container-low border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 placeholder:text-on-surface-variant font-label"
-          />
+      {/* Search Bar - Only show if not on search page */}
+      {!isSearchPage && (
+        <div className="flex items-center flex-1 max-w-md">
+          <div className="relative w-full">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">
+              search
+            </span>
+            <input
+              type="text"
+              placeholder={searchPlaceholder}
+              value={searchQuery}
+              onChange={handleSearch}
+              onFocus={handleSearchClick}
+              className="w-full bg-surface-container-low border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 placeholder:text-on-surface-variant font-label"
+            />
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Right Actions */}
-      <div className="flex items-center gap-6">
+      {/* Right Actions - Always aligned to right */}
+      <div className={`flex items-center gap-6 ${!isSearchPage ? '' : 'ml-auto'}`}>
         <button className="text-neutral-400 dark:text-on-surface-variant hover:text-white transition-colors">
           <span className="material-symbols-outlined">notifications</span>
         </button>

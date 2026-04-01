@@ -5,6 +5,60 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom slider styles */
+@layer utilities {
+  .slider {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+  }
+  
+  .slider::-webkit-slider-track {
+    background: hsl(var(--surface-container-highest));
+    height: 8px;
+    border-radius: 4px;
+  }
+  
+  .slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    background: hsl(var(--on-surface-variant));
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    margin-top: -4px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  
+  .slider:hover::-webkit-slider-thumb {
+    opacity: 1;
+    background: hsl(var(--primary));
+  }
+  
+  .slider::-moz-range-track {
+    background: hsl(var(--surface-container-highest));
+    height: 8px;
+    border-radius: 4px;
+  }
+  
+  .slider::-moz-range-thumb {
+    background: hsl(var(--on-surface-variant));
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    border: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  
+  .slider:hover::-moz-range-thumb {
+    opacity: 1;
+    background: hsl(var(--primary));
+  }
+}
+
 @layer base {
   * {
     scrollbar-width: thin;

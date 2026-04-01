@@ -16,7 +16,6 @@ const SideNavBar: React.FC = () => {
     { id: 'home', label: 'Home', icon: 'home', path: '/' },
     { id: 'search', label: 'Search', icon: 'search', path: '/search' },
     { id: 'library', label: 'Library', icon: 'library_music', path: '/library' },
-    { id: 'playlists', label: 'Playlists', icon: 'playlist_play', path: '/playlists' },
   ];
 
   const isActive = (path: string) => location.pathname === path;

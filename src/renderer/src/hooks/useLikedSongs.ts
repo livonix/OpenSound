@@ -7,10 +7,6 @@ export function useLikedSongs() {
   const [likedSongs, setLikedSongs] = useState<LikedSongs | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    loadLikedSongs();
-  }, []);
-
   const loadLikedSongs = useCallback(async () => {
     if (!isReady || !api) return;
 
@@ -24,6 +20,10 @@ export function useLikedSongs() {
       setIsLoading(false);
     }
   }, [isReady, api]);
+
+  useEffect(() => {
+    loadLikedSongs();
+  }, [loadLikedSongs]);
 
   const isTrackLiked = useCallback(async (trackId: string): Promise<boolean> => {
     if (!isReady || !api) return false;

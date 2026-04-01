@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useUserData } from '../hooks/useUserData';
 import { useDiscoveryData } from '../hooks/useDiscoveryData';
-import { useLikedSongs } from '../hooks/useLikedSongs';
 import { Track } from '../../../shared/types';
+import { audioPlayer } from '../services/audioPlayer';
 
 const HomePage: React.FC = () => {
-  const { recentlyPlayed, isLoading: userDataLoading } = useUserData();
+  const { recentlyPlayed, isLoading: userDataLoading, addToRecentlyPlayed } = useUserData();
   const { dailyMixes, madeForYou, isLoading: discoveryLoading } = useDiscoveryData();
-  const { likedSongs } = useLikedSongs();
   const [userName, setUserName] = useState('Alex');
 
   useEffect(() => {
@@ -17,17 +16,64 @@ const HomePage: React.FC = () => {
   }, []);
 
   // Format recently played tracks for display
-  const displayRecentlyPlayed = recentlyPlayed.slice(0, 6).map(item => ({
-    id: item.track.id,
-    title: item.track.name,
-    artist: item.track.artists[0]?.name || 'Unknown Artist',
-    albumArt: item.track.album.images[0]?.url || 'https://via.placeholder.com/64'
-  }));
+  const displayRecentlyPlayed = React.useMemo(() => {
+    console.log('🏠 HomePage: recentlyPlayed updated:', recentlyPlayed.length, 'tracks');
+    return recentlyPlayed.slice(0, 6).map(item => ({
+      id: item.track.id,
+      title: item.track.name,
+      artist: item.track.artists[0]?.name || 'Unknown Artist',
+      albumArt: item.track.album.images[0]?.url || 'https://via.placeholder.com/64'
+    }));
+  }, [recentlyPlayed]);
 
   const formatTime = (ms: number) => {
     const minutes = Math.floor(ms / 60000);
     const seconds = Math.floor((ms % 60000) / 1000);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const handlePlayTrack = async (trackData: any) => {
+    try {
+      console.log('🏠 HomePage: handlePlayTrack called for:', trackData.title);
+      
+      // Use the original track from recentlyPlayed data
+      const originalTrack = recentlyPlayed.find(item => item.track.id === trackData.id)?.track;
+      if (originalTrack) {
+        console.log('🏠 HomePage: Playing track and adding to recently played:', originalTrack.name);
+        await audioPlayer.playTrack(originalTrack);
+        // Add to recently played
+        addToRecentlyPlayed(originalTrack);
+        console.log('🏠 HomePage: addToRecentlyPlayed called');
+      } else {
+        console.log('🏠 HomePage: Track not found in recentlyPlayed, creating new track object');
+        // Si la musique n'est pas dans recentlyPlayed, on la crée à partir des données
+        const newTrack: Track = {
+          id: trackData.id,
+          name: trackData.title,
+          artists: [{ name: trackData.artist, id: '', external_urls: { spotify: '' } }],
+          album: {
+            id: '',
+            name: '',
+            images: [{ url: trackData.albumArt, height: 64, width: 64 }],
+            release_date: '',
+            total_tracks: 1,
+            artists: [],
+            external_urls: { spotify: '' }
+          },
+          duration_ms: 0,
+          explicit: false,
+          external_urls: { spotify: '' },
+          preview_url: '',
+          uri: ''
+        };
+        
+        await audioPlayer.playTrack(newTrack);
+        addToRecentlyPlayed(newTrack);
+        console.log('🏠 HomePage: New track added to recently played');
+      }
+    } catch (error) {
+      console.error('🏠 HomePage: Error playing track:', error);
+    }
   };
 
   return (
@@ -76,7 +122,10 @@ const HomePage: React.FC = () => {
                     src={item.albumArt}
                   />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                    <button className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-on-primary-fixed transform translate-y-12 group-hover:translate-y-0 transition-transform">
+                    <button 
+                      onClick={() => handlePlayTrack(item)}
+                      className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-on-primary-fixed transform translate-y-12 group-hover:translate-y-0 transition-transform"
+                    >
                       <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>
                         play_arrow
                       </span>
@@ -183,36 +232,7 @@ const HomePage: React.FC = () => {
         )}
       </section>
 
-      {/* Liked Songs Section */}
-      <section className="mb-16">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold font-headline">Liked Songs</h2>
-          <button className="text-sm font-bold text-primary hover:text-primary/80 transition-colors">
-            See all
-          </button>
-        </div>
-
-        <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-r from-primary to-primary-container rounded-2xl"></div>
-          <div className="relative bg-surface/80 backdrop-blur-sm rounded-2xl p-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-3xl font-bold font-headline mb-2">Your Favorite Tracks</h3>
-                <p className="text-on-surface-variant mb-4">
-                  {likedSongs?.tracks?.length || 0} {(likedSongs?.tracks?.length || 0) === 1 ? 'song' : 'songs'} • Updated daily
-                </p>
-                <button className="px-8 py-3 bg-primary text-on-primary-fixed rounded-full font-bold hover:bg-primary/90 transition-colors">
-                  Play Liked Songs
-                </button>
-              </div>
-              <div className="w-32 h-32 rounded-full bg-primary/20 flex items-center justify-center">
-                <span className="material-symbols-outlined text-6xl text-primary">favorite</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-    </main>
+          </main>
   );
 };
 

@@ -260,16 +260,24 @@ export function Player() {
           <PictureInPicture size={18} />
         </button>
         
-        <div className="flex items-center gap-2">
-          <Volume2 size={18} className="text-spotify-gray" />
+        <div className="flex items-center gap-2 group w-32">
+          <span className="material-symbols-outlined text-on-surface-variant">volume_up</span>
           <input
             type="range"
             min="0"
-            max="1"
-            step="0.01"
-            value={localVolume}
-            onChange={handleVolumeChange}
-            className="volume-slider"
+            max="100"
+            value={localVolume * 100}
+            onChange={(e) => {
+              const newVolume = parseInt(e.target.value) / 100;
+              setLocalVolume(newVolume);
+              setVolume(newVolume);
+              audioPlayer.setVolume(newVolume);
+              console.log('Volume set to:', newVolume);
+            }}
+            className="flex-1 h-2 bg-surface-container-highest rounded-lg appearance-none cursor-pointer slider"
+            style={{
+              background: `linear-gradient(to right, hsl(var(--on-surface-variant)) 0%, hsl(var(--on-surface-variant)) ${localVolume * 100}%, hsl(var(--surface-container-highest)) ${localVolume * 100}%, hsl(var(--surface-container-highest)) 100%)`
+            }}
           />
         </div>
       </div>

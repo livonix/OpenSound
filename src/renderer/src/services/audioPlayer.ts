@@ -1,7 +1,9 @@
 import { Track } from '../../../shared/types';
 import { usePlayerStore } from '../stores/playerStore';
+import { localStorageService } from './localStorage';
 
 export class AudioPlayerService {
+  private static instance: AudioPlayerService;
   private isInitialized = false;
   private onEndedCallback?: () => void;
   private currentTrack: Track | null = null;
@@ -9,11 +11,20 @@ export class AudioPlayerService {
   private isPreloadingNext = false;
   private audio: HTMLAudioElement | null = null;
 
-  constructor() {
+  private constructor() {
     this.setupEventListeners();
   }
 
+  public static getInstance(): AudioPlayerService {
+    if (!AudioPlayerService.instance) {
+      AudioPlayerService.instance = new AudioPlayerService();
+    }
+    return AudioPlayerService.instance;
+  }
+
   private setupEventListeners(): void {
+    if (this.isInitialized) return; // Prevent multiple initialization
+    
     // Listen for backend playback events
     const electronAPI = (window as any).electronAPI;
     
@@ -54,6 +65,17 @@ export class AudioPlayerService {
       console.log('=== playTrack called (using backend) ===');
       console.log('Track:', track.name, 'by', track.artists[0]?.name);
       
+      // Immediately stop current track if playing
+      console.log('🔇 About to stop current track...');
+      this.stopCurrent();
+      
+      // Also force stop via store to handle any playing audio
+      const playerStore = usePlayerStore.getState();
+      if (playerStore.isPlaying) {
+        console.log('🔇 Forcing stop via player store');
+        playerStore.setPlaying(false);
+      }
+      
       const electronAPI = (window as any).electronAPI;
       
       if (!electronAPI) {
@@ -63,6 +85,10 @@ export class AudioPlayerService {
       // Set current track in store
       this.currentTrack = track;
       usePlayerStore.getState().setCurrentTrack(track);
+
+      // Save to recently played and update stats
+      localStorageService.saveLastPlayedTrack(track);
+      localStorageService.updateListeningStats(0); // Will be updated with actual play time
 
       // Update Discord RPC
       if (electronAPI.updateDiscordTrack) {
@@ -80,15 +106,26 @@ export class AudioPlayerService {
         console.log('Backend playback result:', result);
         
         if (result && result.streamUrl) {
-          // Clean up previous audio element
+          // Clean up previous audio element completely
           if (this.audio) {
+            console.log('🔇 Stopping previous track');
             this.audio.pause();
+            this.audio.currentTime = 0;
             this.audio.src = '';
+            // Clone the node to remove all event listeners
+            this.audio.load();
+            this.audio = null;
           }
 
           // Create new audio element
+          console.log('🎵 Creating new audio element for:', track.name);
           this.audio = new Audio();
           this.audio.src = result.streamUrl;
+          
+          // Initialize volume from store
+          const currentVolume = usePlayerStore.getState().volume;
+          this.audio.volume = currentVolume;
+          console.log('Audio volume initialized to:', currentVolume);
           
           // Only set crossOrigin for non-local URLs to avoid CORS issues
           if (!result.streamUrl.includes('localhost') && !result.streamUrl.includes('127.0.0.1')) {
@@ -194,19 +231,6 @@ export class AudioPlayerService {
           console.error('Failed to update Discord RPC resume state:', error);
         });
       }
-    }
-  }
-
-  public stop(): void {
-    if (this.audio) {
-      this.audio.pause();
-      this.audio.currentTime = 0;
-      this.audio.removeAttribute('src');
-      this.audio.load();
-      usePlayerStore.getState().setPlaying(false);
-      
-      // Update Discord RPC
-      const electronAPI = (window as any).electronAPI;
       if (electronAPI && electronAPI.updateDiscordPlayingState) {
         electronAPI.updateDiscordPlayingState(false).catch((error: any) => {
           console.error('Failed to update Discord RPC stop state:', error);
@@ -258,6 +282,38 @@ export class AudioPlayerService {
 
   public getCurrentTrack(): Track | null {
     return this.currentTrack;
+  }
+
+  public stop(): void {
+    if (this.audio) {
+      console.log('🛑 Stopping playback completely');
+      this.audio.pause();
+      this.audio.currentTime = 0;
+      this.audio.src = '';
+      // Clone the node to remove all event listeners
+      this.audio.load();
+      this.audio = null;
+      usePlayerStore.getState().setPlaying(false);
+    }
+  }
+
+  public stopCurrent(): void {
+    console.log('🔇 stopCurrent called, this.audio:', this.audio);
+    if (this.audio) {
+      console.log('🔇 Immediately stopping current track');
+      try {
+        this.audio.pause();
+        this.audio.currentTime = 0;
+        this.audio.src = '';
+        this.audio.load();
+      } catch (error) {
+        console.log('Error stopping audio:', error);
+      }
+      this.audio = null;
+      usePlayerStore.getState().setPlaying(false);
+    } else {
+      console.log('🔇 No audio to stop');
+    }
   }
 
   public isPlaying(): boolean {
@@ -401,4 +457,4 @@ export class AudioPlayerService {
 }
 
 // Singleton instance
-export const audioPlayer = new AudioPlayerService();
+export const audioPlayer = AudioPlayerService.getInstance();

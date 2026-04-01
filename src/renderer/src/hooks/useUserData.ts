@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useElectronAPI } from './useElectronAPI';
 import { Track, Playlist } from '../../../shared/types';
+import { localStorageService } from '../services/localStorage';
 
 interface RecentlyPlayed {
   track: Track;
@@ -15,42 +16,57 @@ export function useUserData() {
   const [isLoading, setIsLoading] = useState(true);
 
   const loadUserData = useCallback(async () => {
-    if (!isReady || !api) return;
-
     try {
       setIsLoading(true);
       
-      // Load playlists using the existing handler
-      const allPlaylistsData = await api.getPlaylists();
-      setPlaylists(allPlaylistsData || []);
-      setUserPlaylists(allPlaylistsData || []);
+      // Load from local storage first
+      const localRecentlyPlayed = localStorageService.getRecentlyPlayed();
+      const localPlaylists = localStorageService.getPlaylists();
+      
+      // Convert local recently played format to hook format
+      const formattedRecentlyPlayed = localRecentlyPlayed.map(item => ({
+        track: item.track,
+        playedAt: new Date(item.playedAt)
+      }));
+      
+      // Convert local playlists format to hook format
+      const formattedPlaylists = localPlaylists.map(playlist => ({
+        ...playlist,
+        createdAt: new Date(playlist.createdAt),
+        updatedAt: new Date(playlist.updatedAt)
+      }));
+      
+      setRecentlyPlayed(formattedRecentlyPlayed);
+      setUserPlaylists(formattedPlaylists);
+      setPlaylists(formattedPlaylists);
 
-      // For recently played, we'll use a demo implementation for now
-      // since there's no recently played handler in the IPC
-      const demoRecentlyPlayed: RecentlyPlayed[] = [
-        {
-          track: {
-            id: 'demo-1',
-            name: 'Demo Track 1',
-            artists: [{ id: 'artist-1', name: 'Demo Artist', external_urls: { spotify: '#' } }],
-            album: {
-              id: 'album-1',
-              name: 'Demo Album',
-              artists: [{ id: 'artist-1', name: 'Demo Artist', external_urls: { spotify: '#' } }],
-              images: [{ url: 'https://via.placeholder.com/64', height: 64, width: 64 }],
-              external_urls: { spotify: '#' },
-              release_date: '2024-01-01',
-              total_tracks: 10
-            },
-            duration_ms: 180000,
-            explicit: false,
-            external_urls: { spotify: '#' },
-            uri: ''
-          },
-          playedAt: new Date(Date.now() - 3600000) // 1 hour ago
+      // Try to sync with backend if available
+      if (isReady && api) {
+        try {
+          const allPlaylistsData = await api.getPlaylists();
+          if (allPlaylistsData && allPlaylistsData.length > 0) {
+            // Merge backend playlists with local ones
+            const mergedPlaylists = [...formattedPlaylists];
+            allPlaylistsData.forEach((backendPlaylist: Playlist) => {
+              if (!mergedPlaylists.find(p => p.id === backendPlaylist.id)) {
+                mergedPlaylists.push(backendPlaylist);
+              }
+            });
+            setUserPlaylists(mergedPlaylists);
+            setPlaylists(mergedPlaylists);
+            
+            // Save merged playlists back to local storage
+            const mergedForStorage = mergedPlaylists.map(playlist => ({
+              ...playlist,
+              createdAt: playlist.createdAt.toISOString(),
+              updatedAt: playlist.updatedAt.toISOString()
+            }));
+            localStorageService.savePlaylists(mergedForStorage);
+          }
+        } catch (error) {
+          console.warn('Failed to sync with backend, using local data:', error);
         }
-      ];
-      setRecentlyPlayed(demoRecentlyPlayed);
+      }
 
     } catch (error) {
       console.error('Failed to load user data:', error);
@@ -86,14 +102,48 @@ export function useUserData() {
     if (!isReady || !api) return false;
 
     try {
-      // Note: There's no delete handler in IPC, this would need to be added
-      console.log('Delete playlist not implemented in IPC yet');
-      return false;
+      // Delete from local storage
+      const currentPlaylists = localStorageService.getPlaylists();
+      const updatedPlaylists = currentPlaylists.filter(p => p.id !== playlistId);
+      localStorageService.savePlaylists(updatedPlaylists);
+      
+      // Update state
+      const formattedUpdated = updatedPlaylists.map(playlist => ({
+        ...playlist,
+        createdAt: new Date(playlist.createdAt),
+        updatedAt: new Date(playlist.updatedAt)
+      }));
+      setUserPlaylists(formattedUpdated);
+      setPlaylists(formattedUpdated);
+      
+      console.log('Playlist deleted from local storage');
+      return true;
     } catch (error) {
       console.error('Failed to delete playlist:', error);
       return false;
     }
   }, [isReady, api]);
+
+  const addToRecentlyPlayed = useCallback((track: Track) => {
+    const current = localStorageService.getRecentlyPlayed();
+    const newEntry = {
+      track,
+      playedAt: new Date().toISOString()
+    };
+    
+    // Remove existing entries for the same track and add new one at the beginning
+    const filtered = current.filter(item => item.track.id !== track.id);
+    const updated = [newEntry, ...filtered].slice(0, 50); // Keep only last 50
+    
+    localStorageService.saveRecentlyPlayed(updated);
+    
+    // Update state
+    const formatted = updated.map(item => ({
+      track: item.track,
+      playedAt: new Date(item.playedAt)
+    }));
+    setRecentlyPlayed(formatted);
+  }, []);
 
   return {
     recentlyPlayed,
@@ -102,6 +152,7 @@ export function useUserData() {
     isLoading,
     refreshUserData: loadUserData,
     createPlaylist,
-    deletePlaylist
+    deletePlaylist,
+    addToRecentlyPlayed
   };
 }
