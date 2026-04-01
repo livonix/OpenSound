@@ -29,7 +29,7 @@ export function useSpotifyAPI() {
   if (!isReady || !api) {
     // Return a loading state instead of throwing an error
     return {
-      searchTracks: () => Promise.resolve([]),
+      searchTracks: () => Promise.resolve({ tracks: { items: [], total: 0, limit: 0, offset: 0 } }),
       getTrack: () => Promise.resolve(null),
       getAlbum: () => Promise.resolve(null),
       getArtist: () => Promise.resolve(null),
@@ -38,7 +38,12 @@ export function useSpotifyAPI() {
   }
 
   return {
-    searchTracks: api.searchTracks,
+    searchTracks: async (query: string, limit: number, offset: number) => {
+      console.log('useSpotifyAPI.searchTracks called:', { query, limit, offset });
+      const result = await api.searchTracks(query, limit, offset);
+      console.log('useSpotifyAPI.searchTracks result:', result);
+      return result;
+    },
     getTrack: api.getTrack,
     getAlbum: api.getAlbum,
     getArtist: api.getArtist,

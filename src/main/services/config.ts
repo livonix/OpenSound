@@ -13,7 +13,7 @@ export class ConfigService {
   }
 
   private getDefaultConfig(): AppConfig {
-    return {
+    const config = {
       spotify: {
         clientId: process.env.SPOTIFY_CLIENT_ID || '',
         clientSecret: process.env.SPOTIFY_CLIENT_SECRET || ''
@@ -27,6 +27,15 @@ export class ConfigService {
         ttl: 24 * 60 * 60 * 1000 // 24 hours
       }
     };
+    
+    console.log('Default config loaded:', {
+      hasClientId: !!config.spotify.clientId,
+      hasClientSecret: !!config.spotify.clientSecret,
+      clientIdLength: config.spotify.clientId.length,
+      clientSecretLength: config.spotify.clientSecret.length
+    });
+    
+    return config;
   }
 
   public async initialize(): Promise<void> {

@@ -347,9 +347,9 @@ export function Library() {
   }
 
   return (
-    <div className="p-6">
+    <main className="pt-20 pb-32 px-4 h-screen overflow-y-auto scroll-smooth">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-8 max-w-6xl mx-auto">
         <div className="flex items-center gap-4">
           {activeTab === 'playlist' && selectedPlaylist && (
             <button 
@@ -380,7 +380,7 @@ export function Library() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-4 mb-8 border-b border-spotify-highlight">
+      <div className="flex gap-4 mb-8 border-b border-spotify-highlight max-w-6xl mx-auto">
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -726,6 +726,6 @@ export function Library() {
           onClose={() => setSelectedArtist(null)} 
         />
       )}
-    </div>
+    </main>
   );
-}
+};

@@ -1,34 +1,55 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { Layout } from './components/Layout';
-import { Home } from './pages/Home';
-import { Search } from './pages/Search';
-import { Library } from './pages/Library';
-import { PlaylistPage } from './pages/Playlist';
-import { Player } from './components/Player';
+import SideNavBar from './components/SideNavBar';
+import TopNavBar from './components/TopNavBar';
+import BottomNavBar from './components/BottomNavBar';
+import HomePage from './pages/HomePage';
+import SearchPage from './pages/SearchPage';
+import LibraryPage from './pages/LibraryPage';
+import PlayerPage from './pages/PlayerPage';
 import { usePlayerStore } from './stores/playerStore';
 
 function App() {
-  const { currentTrack } = usePlayerStore();
+  const { currentTrack, isPlaying, currentTime, duration, volume } = usePlayerStore();
 
   return (
     <Router>
-      <div className="h-screen flex flex-col bg-spotify-black">
-        <div className="flex flex-1 overflow-hidden">
-          <Layout>
+      <div className="h-screen flex flex-col bg-background text-on-background font-body">
+        {/* Side Navigation */}
+        <SideNavBar />
+        
+        {/* Main Content Area */}
+        <div className="ml-64 flex-1 flex flex-col">
+          {/* Top Navigation */}
+          <TopNavBar />
+          
+          {/* Page Content */}
+          <div className="flex-1 overflow-hidden">
             <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/search" element={<Search />} />
-              <Route path="/library" element={<Library />} />
-              <Route path="/playlist/:id" element={<PlaylistPage />} />
+              <Route path="/" element={<HomePage />} />
+              <Route path="/search" element={<SearchPage />} />
+              <Route path="/library" element={<LibraryPage />} />
+              <Route path="/player" element={<PlayerPage />} />
             </Routes>
-          </Layout>
+          </div>
         </div>
         
+        {/* Bottom Player */}
         {currentTrack && (
-          <div className="h-24 border-t border-spotify-highlight">
-            <Player />
-          </div>
+          <BottomNavBar
+            currentTrack={currentTrack}
+            isPlaying={isPlaying}
+            currentTime={currentTime}
+            duration={duration}
+            volume={volume}
+            onPlayPause={() => {/* Handle play/pause */}}
+            onPrevious={() => {/* Handle previous */}}
+            onNext={() => {/* Handle next */}}
+            onSeek={(time) => {/* Handle seek */}}
+            onVolumeChange={(vol) => {/* Handle volume change */}}
+            onShuffle={() => {/* Handle shuffle */}}
+            onRepeat={() => {/* Handle repeat */}}
+          />
         )}
       </div>
     </Router>

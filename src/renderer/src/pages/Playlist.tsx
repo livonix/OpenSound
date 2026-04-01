@@ -111,18 +111,18 @@ export function PlaylistPage() {
   }
 
   return (
-    <div className="p-6">
+    <main className="pt-20 pb-32 px-4 h-screen overflow-y-auto scroll-smooth">
       {/* Playlist Header */}
-      <div className="flex items-end gap-6 mb-8">
-        <div className="w-56 h-56 bg-spotify-highlight rounded-lg flex items-center justify-center">
+      <div className="flex flex-col md:flex-row md:items-end gap-6 mb-8 max-w-6xl mx-auto">
+        <div className="w-full md:w-56 h-56 md:h-56 bg-spotify-highlight rounded-lg flex items-center justify-center">
           <Play size={64} className="text-spotify-gray" />
         </div>
         
         <div className="flex-1">
           <p className="text-sm font-semibold uppercase mb-2">Playlist</p>
-          <h1 className="text-6xl font-bold mb-6">{playlist.name}</h1>
+          <h1 className="text-4xl md:text-6xl font-bold mb-6">{playlist.name}</h1>
           
-          <div className="flex items-center gap-4 text-sm">
+          <div className="flex flex-wrap items-center gap-4 text-sm">
             <span className="font-semibold">OpenSound</span>
             <span className="text-spotify-gray">•</span>
             <span className="text-spotify-gray">
@@ -139,7 +139,7 @@ export function PlaylistPage() {
       </div>
 
       {/* Play Controls */}
-      <div className="flex items-center gap-4 mb-8">
+      <div className="flex items-center gap-4 mb-8 max-w-6xl mx-auto">
         <button
           onClick={handlePlayPlaylist}
           className="bg-spotify-green text-black rounded-full p-4 hover:scale-105 transition-transform"
@@ -236,6 +236,6 @@ export function PlaylistPage() {
           </p>
         </div>
       )}
-    </div>
+    </main>
   );
 }

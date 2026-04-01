@@ -10,6 +10,8 @@ export class SpotifyService {
   private demoMode: boolean = false;
 
   constructor(clientId: string, clientSecret: string) {
+    console.log('SpotifyService constructor:', { clientId: !!clientId, clientSecret: !!clientSecret });
+    
     if (!clientId || !clientSecret) {
       console.warn('Spotify not configured - running in demo mode');
       this.demoMode = true;
@@ -19,6 +21,7 @@ export class SpotifyService {
     this.clientId = clientId;
     this.clientSecret = clientSecret;
     this.demoMode = false;
+    console.log('SpotifyService initialized in production mode');
     
     this.client = axios.create({
       baseURL: 'https://api.spotify.com/v1',
@@ -69,13 +72,17 @@ export class SpotifyService {
   }
 
   public async searchTracks(query: string, limit: number = 20, offset: number = 0): Promise<SearchResult> {
+    console.log('searchTracks called:', { query, limit, offset, demoMode: this.demoMode });
+    
     if (this.demoMode) {
+      console.log('Returning demo search results');
       return this.getDemoSearchResults(query, limit);
     }
     
     await this.ensureValidToken();
     
     try {
+      console.log('Making real Spotify API search request');
       const response = await this.client.get('/search', {
         params: {
           q: query,
@@ -85,6 +92,7 @@ export class SpotifyService {
         },
       });
 
+      console.log('Spotify API search response:', response.data);
       return response.data;
     } catch (error) {
       console.error('Failed to search tracks:', error);
