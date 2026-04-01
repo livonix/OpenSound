@@ -1,14 +1,14 @@
 import { EventEmitter } from 'events';
 import { StreamService } from './streamer';
 import { DiscordRPCService } from './discordRPC';
-import { YouTubeStreamingService } from './youtubeStreaming';
+import { YouTubeLavalinkService } from './youtubeLavalinkService';
 import { QueueRecommendationService } from './queueRecommendation';
 import { Track, PlaybackState } from '../../shared/types';
 
 export class PlaybackService extends EventEmitter {
   private streamService: StreamService;
   private discordRPC: DiscordRPCService;
-  private youtubeService: YouTubeStreamingService;
+  private youtubeService: YouTubeLavalinkService;
   private recommendationService: QueueRecommendationService;
   private currentTrack: Track | null = null;
   private isPlaying: boolean = false;
@@ -25,7 +25,7 @@ export class PlaybackService extends EventEmitter {
   constructor(streamService: StreamService, spotifyService?: any) {
     super();
     this.streamService = streamService;
-    this.youtubeService = new YouTubeStreamingService();
+    this.youtubeService = new YouTubeLavalinkService();
     this.discordRPC = new DiscordRPCService();
     this.recommendationService = spotifyService ? new QueueRecommendationService(spotifyService) : null!;
   }
@@ -47,41 +47,55 @@ export class PlaybackService extends EventEmitter {
       this.discordRPC.updateTrack(track);
       this.discordRPC.updatePlayingState(true);
 
-      // Check if this is a Spotify track and convert to YouTube
+      // Search directly via Lavalink YouTube
       let playbackTrack = track;
-      if (track.uri.startsWith('spotify:')) {
-        console.log('Spotify track detected, searching YouTube...');
-        try {
-          const searchQuery = `${track.artists[0]?.name || ''} ${track.name}`;
-          const youtubeTracks = await this.youtubeService.searchTracks(searchQuery);
+      console.log('Searching YouTube directly via Lavalink for:', track.name);
+      
+      // Search YouTube directly using the track name and artist
+      const searchQuery = track.artists && track.artists.length > 0 
+        ? `${track.artists[0].name} ${track.name}`
+        : track.name;
+        
+      try {
+        const youtubeTracks = await this.youtubeService.searchTracks(searchQuery);
+        
+        if (youtubeTracks.length === 0) {
+          console.log('No YouTube results found, trying alternative search...');
+          // Try with just the track name
+          const altResults = await this.youtubeService.searchTracks(track.name);
           
-          if (youtubeTracks.length > 0) {
-            playbackTrack = youtubeTracks[0];
-            console.log('Found YouTube track:', playbackTrack.name, 'by', playbackTrack.artists[0]?.name);
-          } else {
-            throw new Error(`No YouTube results found for: ${searchQuery}`);
+          if (altResults.length === 0) {
+            throw new Error(`No YouTube results found for: ${searchQuery}. Try a different track or check your Lavalink server configuration.`);
           }
-        } catch (searchError) {
-          console.error('YouTube search failed:', searchError);
-          throw new Error(`Failed to find YouTube version of track: ${track.name}`);
+          
+          // Use alternative results
+          playbackTrack = altResults[0];
+          console.log(`Found YouTube track (alternative): ${playbackTrack.name}`);
+        } else {
+          // Use the first result
+          playbackTrack = youtubeTracks[0];
+          console.log(`Found YouTube track: ${playbackTrack.name}`);
         }
+      } catch (searchError) {
+        console.error('YouTube search failed:', searchError);
+        throw new Error(`Failed to find YouTube version of track: ${track.name}. Make sure Lavalink is running on port 2333.`);
       }
 
-      // Get streaming URL from YouTube service
+      // Get streaming URL from YouTube Lavalink service
       const videoId = playbackTrack.uri.replace('youtube:', '');
       const streamInfo = await this.youtubeService.getStreamUrl(videoId);
-      console.log('Streaming URL obtained for frontend:', streamInfo.streamUrl.substring(0, 50) + '...');
+      console.log('Streaming URL obtained from Lavalink:', streamInfo.streamUrl.substring(0, 50) + '...');
       
       // Emit playback state change
       this.isPlaying = true;
       this.emitStateChange();
 
-      // Return a local proxy URL instead of direct YouTube URL
-      const proxyUrl = `http://localhost:3001/stream/${videoId}`;
-      console.log('Returning proxy URL for frontend:', proxyUrl);
-
+      // Return the proxied streaming URL (port 3001 proxy adds Lavalink auth)
+      const proxiedStreamUrl = streamInfo.streamUrl.replace('http://localhost:2333', 'http://localhost:3001/stream');
+      console.log('Using proxied stream URL:', proxiedStreamUrl.substring(0, 50) + '...');
+      
       return {
-        streamUrl: proxyUrl,
+        streamUrl: proxiedStreamUrl,
         track: playbackTrack
       };
 
@@ -420,15 +434,12 @@ export class PlaybackService extends EventEmitter {
       this.nextTrack = this.queue[0];
       console.log(`Starting preload for next track: ${this.nextTrack.name} (Queue has ${this.queue.length} tracks)`);
       
-      // Preload the stream but don't start playing it
-      this.preloadedStream = await this.streamService.getStreamWithFastBuffer(this.nextTrack);
+      // Preload the stream using Lavalink
+      const videoId = this.nextTrack.uri.replace('youtube:', '');
+      const streamInfo = await this.youtubeService.getStreamUrl(videoId);
+      this.preloadedStream = { streamUrl: streamInfo.streamUrl, videoId };
       
-      // Add event handlers for preloaded stream
-      this.preloadedStream.on('error', (error: any) => {
-        console.error('Preloaded stream error:', error);
-        this.clearPreloadedStream();
-      });
-
+      // Preload successful - no error handler needed for object
       this.emit('next-track-preloaded', this.nextTrack);
       console.log(`Successfully preloaded next track: ${this.nextTrack.name}`);
     } catch (error) {
@@ -440,7 +451,6 @@ export class PlaybackService extends EventEmitter {
   private clearPreloadedStream(): void {
     if (this.preloadedStream && this.nextTrack) {
       console.log(`Clearing preloaded stream for: ${this.nextTrack.name}`);
-      this.preloadedStream.destroy();
       this.preloadedStream = null;
       this.nextTrack = null;
     }

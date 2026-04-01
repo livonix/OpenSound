@@ -22,7 +22,9 @@
     "release": "npm run build && npm run dist",
     "release:patch": "npm run version:patch && npm run release",
     "release:minor": "npm run version:minor && npm run release",
-    "release:major": "npm run version:major && npm run release"
+    "release:major": "npm run version:major && npm run release",
+    "lavalink": "start-lavalink.bat",
+    "dev:lavalink": "concurrently \"npm run lavalink\" \"npm run dev\""
   },
   "keywords": [
     "music",
@@ -44,15 +46,14 @@
     "wait-on": "latest"
   },
   "dependencies": {
-    "axios": "latest",
+    "axios": "^1.14.0",
     "discord-rpc": "^4.0.1",
     "dotenv": "latest",
     "electron-log": "latest",
     "electron-updater": "^6.8.3",
     "fluent-ffmpeg": "latest",
-    "play-dl": "latest",
     "uuid": "latest",
-    "yt-dlp-exec": "latest",
+    "ytdl-core": "^4.11.5",
     "ytdlp-nodejs": "latest"
   },
   "build": {

@@ -41,40 +41,49 @@ export function useDiscoveryData() {
   const loadDiscoveryData = async () => {
     try {
       setIsLoading(true);
-      console.log('Loading real Spotify discovery data...');
+      console.log('Loading discovery data...');
 
-      // Load browse categories
-      const categoriesData = await api.getBrowseCategories();
-      console.log('Categories loaded:', categoriesData?.categories?.items?.length || 0);
+      // Check if API has the required methods, otherwise use demo data
+      if (api && typeof api.getBrowseCategories === 'function') {
+        // Load browse categories
+        const categoriesData = await api.getBrowseCategories();
+        console.log('Categories loaded:', categoriesData?.categories?.items?.length || 0);
 
-      // Load daily mixes
-      const dailyMixesData = await api.getDailyMixes();
-      console.log('Daily mixes loaded:', dailyMixesData?.length || 0);
+        // Load daily mixes
+        const dailyMixesData = await api.getDailyMixes();
+        console.log('Daily mixes loaded:', dailyMixesData?.length || 0);
 
-      // Load made for you playlists
-      const madeForYouData = await api.getMadeForYou();
-      console.log('Made for you loaded:', madeForYouData?.length || 0);
+        // Load made for you playlists
+        const madeForYouData = await api.getMadeForYou();
+        console.log('Made for you loaded:', madeForYouData?.length || 0);
 
-      // Format and set data
-      if (categoriesData?.categories?.items) {
-        const formattedCategories = categoriesData.categories.items.map((cat: any) => ({
-          id: cat.id,
-          name: cat.name,
-          description: cat.description || '',
-          coverArt: cat.icons?.[0]?.url || 'https://via.placeholder.com/300'
-        }));
-        setCategories(formattedCategories);
-      }
+        // Format and set data
+        if (categoriesData?.categories?.items) {
+          const formattedCategories = categoriesData.categories.items.map((cat: any) => ({
+            id: cat.id,
+            name: cat.name,
+            description: cat.description || '',
+            coverArt: cat.icons?.[0]?.url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzg4ODg4OCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZmlsbD0id2hpdGUiIGZvbnQtZmFtaWx5PSJBcmlhbCI+T8KAVjwvdGV4dD48L3N2Zz4='
+          }));
+          setCategories(formattedCategories);
+        }
 
-      if (dailyMixesData) {
-        setDailyMixes(dailyMixesData);
+        if (dailyMixesData) {
+          setDailyMixes(dailyMixesData);
+        } else {
+          setDailyMixes(getDemoDailyMixes());
+        }
+
+        if (madeForYouData) {
+          setMadeForYou(madeForYouData);
+        } else {
+          setMadeForYou(getDemoMadeForYou());
+        }
       } else {
+        console.log('Discovery API methods not available, using demo data');
+        // Use demo data when API methods are not available
         setDailyMixes(getDemoDailyMixes());
-      }
-
-      if (madeForYouData) {
-        setMadeForYou(madeForYouData);
-      } else {
+        setCategories(getDemoCategories());
         setMadeForYou(getDemoMadeForYou());
       }
 
@@ -94,21 +103,21 @@ export function useDiscoveryData() {
       id: 'daily-mix-1',
       name: 'Daily Mix 1',
       description: 'Your favorites mixed with new discoveries',
-      coverArt: 'https://via.placeholder.com/300/1DB954/000000?text=Daily+Mix+1',
+      coverArt: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzFEQjk1NCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZmlsbD0id2hpdGUiIGZvbnQtZmFtaWx5PSJBcmlhbCI+RGFpbHkgTWl4IDE8L3RleHQ+PC9zdmc+',
       tracks: []
     },
     {
       id: 'daily-mix-2',
       name: 'Daily Mix 2',
       description: 'More of what you love',
-      coverArt: 'https://via.placeholder.com/300/1ED760/000000?text=Daily+Mix+2',
+      coverArt: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzFFRDc2MCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZmlsbD0id2hpdGUiIGZvbnQtZmFtaWx5PSJBcmlhbCI+RGFpbHkgTWl4IDI8L3RleHQ+PC9zdmc+',
       tracks: []
     },
     {
       id: 'daily-mix-3',
       name: 'Daily Mix 3',
       description: 'Discoveries we think you\'ll like',
-      coverArt: 'https://via.placeholder.com/300/1ED760/000000?text=Daily+Mix+3',
+      coverArt: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzFFRDc2MCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZmlsbD0id2hpdGUiIGZvbnQtZmFtaWx5PSJBcmlhbCI+RGFpbHkgTWl4IDM8L3RleHQ+PC9zdmc+',
       tracks: []
     }
   ];
@@ -118,21 +127,21 @@ export function useDiscoveryData() {
       id: 'discover-weekly',
       name: 'Discover Weekly',
       description: 'Your weekly mixtape of fresh music',
-      coverArt: 'https://via.placeholder.com/300/FF6B6B/000000?text=Discover+Weekly',
+      coverArt: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI0ZGNkI2QiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZmlsbD0id2hpdGUiIGZvbnQtZmFtaWx5PSJBcmlhbCI+RGlzY292ZXIgV2Vla2x5PC90ZXh0Pjwvc3ZnPg==',
       tracks: []
     },
     {
       id: 'release-radar',
       name: 'Release Radar',
       description: 'New music from artists you follow',
-      coverArt: 'https://via.placeholder.com/300/4ECDC4/000000?text=Release+Radar',
+      coverArt: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzRFQ0RDMiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZmlsbD0id2hpdGUiIGZvbnQtZmFtaWx5PSJBcmlhbCI+UmVsZWFzZSBSYWRhcjwvdGV4dD48L3N2Zz4=',
       tracks: []
     },
     {
       id: 'time-capsule',
       name: 'Time Capsule',
       description: 'Flashback to your favorites',
-      coverArt: 'https://via.placeholder.com/300/95E1D3/000000?text=Time+Capsule',
+      coverArt: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzk1RTFEMyIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZmlsbD0id2hpdGUiIGZvbnQtZmFtaWx5PSJBcmlhbCI+VGltZSBDYXBzdWxlPC90ZXh0Pjwvc3ZnPg==',
       tracks: []
     }
   ];
@@ -142,34 +151,39 @@ export function useDiscoveryData() {
       id: 'pop',
       name: 'Pop',
       description: 'The latest and greatest in pop music',
-      coverArt: 'https://via.placeholder.com/300/FF6B6B/000000?text=Pop'
+      coverArt: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI0ZGNkI2QiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZmlsbD0id2hpdGUiIGZvbnQtZmFtaWx5PSJBcmlhbCI+UG9wPC90ZXh0Pjwvc3ZnPg=='
     },
     {
       id: 'rock',
       name: 'Rock',
       description: 'Rock classics and new releases',
-      coverArt: 'https://via.placeholder.com/300/4ECDC4/000000?text=Rock'
+      coverArt: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzRFQ0RDMiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZmlsbD0id2hpdGUiIGZvbnQtZmFtaWx5PSJBcmlhbCI+Um9jazwvdGV4dD48L3N2Zz4=='
     },
     {
       id: 'hip-hop',
       name: 'Hip Hop',
       description: 'The best in hip hop and rap',
-      coverArt: 'https://via.placeholder.com/300/95E1D3/000000?text=Hip+Hop'
+      coverArt: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzk1RTFEMyIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZmlsbD0id2hpdGUiIGZvbnQtZmFtaWx5PSJBcmlhbCI+SGlwIEhvcDwvdGV4dD48L3N2Zz4=='
     },
     {
       id: 'electronic',
       name: 'Electronic',
       description: 'Electronic music and dance hits',
-      coverArt: 'https://via.placeholder.com/300/F38181/000000?text=Electronic'
+      coverArt: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI0YzODE4MSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZmlsbD0id2hpdGUiIGZvbnQtZmFtaWx5PSJBcmlhbCI+RWxlY3Ryb25pYzwvdGV4dD48L3N2Zz4=='
     }
   ];
 
   const refreshDailyMixes = async () => {
     try {
-      const dailyMixesData = await api.getDailyMixes();
-      if (dailyMixesData) {
-        setDailyMixes(dailyMixesData);
+      if (api && typeof api.getDailyMixes === 'function') {
+        const dailyMixesData = await api.getDailyMixes();
+        if (dailyMixesData) {
+          setDailyMixes(dailyMixesData);
+        } else {
+          setDailyMixes(getDemoDailyMixes());
+        }
       } else {
+        console.log('getDailyMixes method not available, using demo data');
         setDailyMixes(getDemoDailyMixes());
       }
     } catch (error) {
@@ -180,10 +194,15 @@ export function useDiscoveryData() {
 
   const refreshMadeForYou = async () => {
     try {
-      const madeForYouData = await api.getMadeForYou();
-      if (madeForYouData) {
-        setMadeForYou(madeForYouData);
+      if (api && typeof api.getMadeForYou === 'function') {
+        const madeForYouData = await api.getMadeForYou();
+        if (madeForYouData) {
+          setMadeForYou(madeForYouData);
+        } else {
+          setMadeForYou(getDemoMadeForYou());
+        }
       } else {
+        console.log('getMadeForYou method not available, using demo data');
         setMadeForYou(getDemoMadeForYou());
       }
     } catch (error) {

@@ -2,7 +2,7 @@ import { ipcMain, shell, app, BrowserWindow } from 'electron';
 import { ConfigService } from '../services/config';
 import { SpotifyService } from '../services/spotify';
 import { YouTubeService } from '../services/youtube';
-import { YouTubeStreamingService } from '../services/youtubeStreaming';
+// YouTubeStreamingService removed - using Lavalink instead
 import { StreamService } from '../services/streamer';
 import { CacheService } from '../services/cache';
 import { PlaybackService } from '../services/playback';
@@ -15,7 +15,7 @@ import { Track, Artist } from '../../shared/types';
 let configService: ConfigService;
 let spotifyService: SpotifyService;
 let youtubeService: YouTubeService;
-let youtubeStreamingService: YouTubeStreamingService;
+// youtubeStreamingService removed - using Lavalink instead
 let streamService: StreamService;
 let cacheService: CacheService;
 let playbackService: PlaybackService;
@@ -30,7 +30,7 @@ export function setupIpcHandlers(): void {
   
   spotifyService = new SpotifyService(config.spotify.clientId, config.spotify.clientSecret);
   youtubeService = new YouTubeService();
-  youtubeStreamingService = new YouTubeStreamingService();
+  // youtubeStreamingService removed - using Lavalink instead
   streamService = new StreamService();
   cacheService = new CacheService(config.cache);
   playbackService = new PlaybackService(streamService, spotifyService);
@@ -153,11 +153,12 @@ export function setupIpcHandlers(): void {
     try {
       console.log('IPC: YouTube search called with query:', query);
       
-      const tracks = await youtubeStreamingService.searchTracks(query);
+      // YouTube search now handled by PlaybackService with Lavalink
+      const tracks = await playbackService['youtubeService'].searchTracks(query);
       console.log('IPC: YouTube search returned', tracks.length, 'tracks');
       
       // Convert to renderer-friendly format
-      const mappedTracks = tracks.map(track => ({
+      const mappedTracks = tracks.map((track: any) => ({
         id: track.id,
         title: track.name,
         artist: track.artists[0]?.name || 'Unknown',
@@ -186,7 +187,8 @@ export function setupIpcHandlers(): void {
   ipcMain.handle('youtube:get-stream-url', async (_, videoId: string) => {
     try {
       console.log('Getting YouTube stream URL for:', videoId);
-      const streamInfo = await youtubeStreamingService.getStreamUrl(videoId);
+      // YouTube stream URL now handled by PlaybackService with Lavalink
+      const streamInfo = await playbackService['youtubeService'].getStreamUrl(videoId);
       return streamInfo.streamUrl; // Return only the URL string
     } catch (error) {
       console.error('YouTube stream URL error:', error);
@@ -195,7 +197,7 @@ export function setupIpcHandlers(): void {
   });
 
   // Playback handlers
-  ipcMain.handle('playback:play', async (_, track) => {
+  ipcMain.handle('playback:play', async (_, track: any) => {
     try {
       const result = await playbackService.play(track);
       return result;

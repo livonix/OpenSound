@@ -39,7 +39,11 @@ class OpenSoundApp {
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
-        preload: preloadPath
+        preload: preloadPath,
+        // Add Content Security Policy to prevent security warnings
+        webSecurity: true,
+        allowRunningInsecureContent: false,
+        experimentalFeatures: false
       },
       titleBarStyle: 'hiddenInset'
     });

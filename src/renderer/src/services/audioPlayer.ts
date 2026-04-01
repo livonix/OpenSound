@@ -89,7 +89,11 @@ export class AudioPlayerService {
           // Create new audio element
           this.audio = new Audio();
           this.audio.src = result.streamUrl;
-          this.audio.crossOrigin = 'anonymous';
+          
+          // Only set crossOrigin for non-local URLs to avoid CORS issues
+          if (!result.streamUrl.includes('localhost') && !result.streamUrl.includes('127.0.0.1')) {
+            this.audio.crossOrigin = 'anonymous';
+          }
           
           // Set up audio event listeners
           this.audio.addEventListener('timeupdate', () => {
