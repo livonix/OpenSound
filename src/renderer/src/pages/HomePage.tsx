@@ -7,233 +7,153 @@ import { audioPlayer } from '../services/audioPlayer';
 const HomePage: React.FC = () => {
   const { recentlyPlayed, isLoading: userDataLoading, addToRecentlyPlayed } = useUserData();
   const { dailyMixes, madeForYou, isLoading: discoveryLoading } = useDiscoveryData();
-  const [userName, setUserName] = useState('Alex');
+  const [greeting, setGreeting] = useState('Good morning');
 
   useEffect(() => {
-    // For now, use a default name since getUserProfile is not implemented
-    // TODO: Implement getUserProfile in IPC when we have OAuth authentication
-    setUserName('Alex');
+    const hour = new Date().getHours();
+    if (hour >= 18) setGreeting('Good evening');
+    else if (hour >= 12) setGreeting('Good afternoon');
+    else setGreeting('Good morning');
   }, []);
 
-  // Format recently played tracks for display
   const displayRecentlyPlayed = React.useMemo(() => {
-    console.log('🏠 HomePage: recentlyPlayed updated:', recentlyPlayed.length, 'tracks');
     return recentlyPlayed.slice(0, 6).map(item => ({
       id: item.track.id,
       title: item.track.name,
       artist: item.track.artists[0]?.name || 'Unknown Artist',
-      albumArt: item.track.album.images[0]?.url || 'https://via.placeholder.com/64'
+      albumArt: item.track.album.images[0]?.url || 'https://via.placeholder.com/150'
     }));
   }, [recentlyPlayed]);
 
-  const formatTime = (ms: number) => {
-    const minutes = Math.floor(ms / 60000);
-    const seconds = Math.floor((ms % 60000) / 1000);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  };
-
   const handlePlayTrack = async (trackData: any) => {
     try {
-      console.log('🏠 HomePage: handlePlayTrack called for:', trackData.title);
-      
-      // Use the original track from recentlyPlayed data
       const originalTrack = recentlyPlayed.find(item => item.track.id === trackData.id)?.track;
       if (originalTrack) {
-        console.log('🏠 HomePage: Playing track and adding to recently played:', originalTrack.name);
         await audioPlayer.playTrack(originalTrack);
-        // Add to recently played
         addToRecentlyPlayed(originalTrack);
-        console.log('🏠 HomePage: addToRecentlyPlayed called');
-      } else {
-        console.log('🏠 HomePage: Track not found in recentlyPlayed, creating new track object');
-        // Si la musique n'est pas dans recentlyPlayed, on la crée à partir des données
-        const newTrack: Track = {
-          id: trackData.id,
-          name: trackData.title,
-          artists: [{ name: trackData.artist, id: '', external_urls: { spotify: '' } }],
-          album: {
-            id: '',
-            name: '',
-            images: [{ url: trackData.albumArt, height: 64, width: 64 }],
-            release_date: '',
-            total_tracks: 1,
-            artists: [],
-            external_urls: { spotify: '' }
-          },
-          duration_ms: 0,
-          explicit: false,
-          external_urls: { spotify: '' },
-          preview_url: '',
-          uri: ''
-        };
-        
-        await audioPlayer.playTrack(newTrack);
-        addToRecentlyPlayed(newTrack);
-        console.log('🏠 HomePage: New track added to recently played');
       }
     } catch (error) {
-      console.error('🏠 HomePage: Error playing track:', error);
+      console.error('Error playing track:', error);
     }
   };
 
   return (
-    <main className="pt-20 pb-32 px-4 h-screen overflow-y-auto scroll-smooth">
-      {/* Welcome Section */}
-      <section className="mb-12">
-        <div className="flex items-end justify-between mb-8">
-          <div>
-            <h1 className="text-4xl md:text-5xl font-extrabold font-headline tracking-tighter">
-              Welcome back, {userName}
-            </h1>
-            <p className="text-lg text-on-surface-variant mt-2">
-              Your personal music library awaits
-            </p>
-          </div>
+    <main className="h-screen overflow-y-auto bg-background text-white pb-32">
+      {/* Hero Section with Dynamic Gradient */}
+      <section className="relative pt-24 pb-12 px-6 bg-gradient-to-b from-primary/20 via-background to-background">
+        <div className="max-w-7xl mx-auto">
+          <h1 className="text-5xl md:text-7xl font-black font-headline tracking-tight mb-2">
+            {greeting}, <span className="text-primary">Alex</span>
+          </h1>
+          <p className="text-on-surface-variant text-lg font-medium opacity-80">
+            Find your rhythm for the rest of the day.
+          </p>
         </div>
       </section>
 
-      {/* Recently Played Section */}
-      <section className="mb-16">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold font-headline">Recently Played</h2>
-          <button className="text-sm font-bold text-primary hover:text-primary/80 transition-colors">
-            See all
-          </button>
-        </div>
-
-        {userDataLoading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="animate-pulse">
-                <div className="aspect-square rounded-lg bg-surface-container mb-2"></div>
-                <div className="h-4 bg-surface-container rounded mb-1"></div>
-                <div className="h-3 bg-surface-container rounded w-3/4"></div>
-              </div>
-            ))}
+      <div className="max-w-7xl mx-auto px-6 space-y-16">
+        
+        {/* Recently Played - Layout compact style "Spotify" */}
+        <section>
+          <div className="flex items-end justify-between mb-6">
+            <h2 className="text-3xl font-bold tracking-tight">Recently Played</h2>
+            <button className="text-sm font-bold text-primary hover:underline transition-all">Show all</button>
           </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {displayRecentlyPlayed.map((item) => (
-              <div key={item.id} className="group cursor-pointer">
-                <div className="relative mb-3">
-                  <img
-                    className="w-full aspect-square rounded-lg object-cover group-hover:scale-105 transition-transform"
-                    alt={item.title}
-                    src={item.albumArt}
-                  />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6">
+            {userDataLoading ? (
+              [...Array(6)].map((_, i) => <SkeletonCard key={i} />)
+            ) : (
+              displayRecentlyPlayed.map((item) => (
+                <div key={item.id} className="group relative bg-surface-container/30 hover:bg-surface-container/60 p-4 rounded-2xl transition-all duration-300">
+                  <div className="relative aspect-square mb-4 overflow-hidden rounded-xl shadow-lg">
+                    <img 
+                      src={item.albumArt} 
+                      alt={item.title} 
+                      className="object-cover w-full h-full transform group-hover:scale-110 transition-transform duration-500"
+                    />
                     <button 
                       onClick={() => handlePlayTrack(item)}
-                      className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-on-primary-fixed transform translate-y-12 group-hover:translate-y-0 transition-transform"
+                      className="absolute bottom-2 right-2 w-12 h-12 bg-primary text-black rounded-full flex items-center justify-center opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 shadow-2xl hover:scale-110"
                     >
-                      <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>
-                        play_arrow
-                      </span>
+                      <span className="material-symbols-outlined fill-1">play_arrow</span>
                     </button>
                   </div>
+                  <h3 className="font-bold text-sm truncate mb-1">{item.title}</h3>
+                  <p className="text-xs text-on-surface-variant truncate font-medium">{item.artist}</p>
                 </div>
-                <p className="font-bold font-headline text-sm truncate">{item.title}</p>
-                <p className="text-xs text-on-surface-variant truncate">{item.artist}</p>
-              </div>
-            ))}
+              ))
+            )}
           </div>
-        )}
-      </section>
+        </section>
 
-      {/* Daily Mixes Section */}
-      <section className="mb-16">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold font-headline">Your Daily Mixes</h2>
-          <button className="text-sm font-bold text-primary hover:text-primary/80 transition-colors">
-            See all
-          </button>
-        </div>
-
-        {discoveryLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="animate-pulse">
-                <div className="aspect-square rounded-xl bg-surface-container mb-3"></div>
-                <div className="h-4 bg-surface-container rounded mb-1"></div>
-                <div className="h-3 bg-surface-container rounded w-2/3"></div>
-              </div>
-            ))}
+        {/* Daily Mixes - Large Cards with Overlays */}
+        <section>
+          <div className="flex items-end justify-between mb-6">
+            <h2 className="text-3xl font-bold tracking-tight">Your Daily Mixes</h2>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {dailyMixes.slice(0, 3).map((mix) => (
-              <div key={mix.id} className="group cursor-pointer">
-                <div className="relative">
-                  <img
-                    className="w-full aspect-square rounded-xl object-cover group-hover:scale-105 transition-transform"
-                    alt={mix.name}
-                    src={mix.coverArt}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent rounded-xl"></div>
-                  <div className="absolute bottom-4 left-4 right-4">
-                    <p className="text-white font-bold font-headline text-lg mb-1">{mix.name}</p>
-                    <p className="text-white/80 text-sm">{mix.description}</p>
-                  </div>
-                  <div className="absolute top-4 right-4 w-12 h-12 rounded-full bg-primary flex items-center justify-center text-on-primary-fixed opacity-0 group-hover:opacity-100 transform translate-y-12 group-hover:translate-y-0 transition-transform">
-                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>
-                      play_arrow
-                    </span>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {discoveryLoading ? (
+              [...Array(3)].map((_, i) => <SkeletonLarge key={i} />)
+            ) : (
+              dailyMixes.slice(0, 3).map((mix) => (
+                <div key={mix.id} className="group relative aspect-[16/10] overflow-hidden rounded-3xl cursor-pointer shadow-xl">
+                  <img src={mix.coverArt} alt={mix.name} className="absolute inset-0 w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent group-hover:via-black/40 transition-colors" />
+                  
+                  <div className="absolute bottom-0 left-0 p-6 w-full">
+                    <div className="flex justify-between items-end">
+                      <div className="flex-1 mr-4">
+                        <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-primary mb-2 block">Daily Mix</span>
+                        <h3 className="text-2xl font-black mb-1">{mix.name}</h3>
+                        <p className="text-sm text-gray-300 line-clamp-1">{mix.description}</p>
+                      </div>
+                      <div className="w-12 h-12 bg-white text-black rounded-full flex items-center justify-center scale-0 group-hover:scale-100 transition-transform duration-300">
+                        <span className="material-symbols-outlined">play_arrow</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
-        )}
-      </section>
+        </section>
 
-      {/* Made For You Section */}
-      <section className="mb-16">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold font-headline">Made For You</h2>
-          <button className="text-sm font-bold text-primary hover:text-primary/80 transition-colors">
-            See all
-          </button>
-        </div>
-
-        {discoveryLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="animate-pulse">
-                <div className="aspect-square rounded-xl bg-surface-container mb-3"></div>
-                <div className="h-4 bg-surface-container rounded mb-1"></div>
-                <div className="h-3 bg-surface-container rounded w-2/3"></div>
-              </div>
-            ))}
-          </div>
-        ) : (
+        {/* Made For You - Clean Horizontal Scroll feeling */}
+        <section className="pb-12">
+          <h2 className="text-3xl font-bold tracking-tight mb-8">Specialy Curated</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {madeForYou.slice(0, 3).map((playlist) => (
-              <div key={playlist.id} className="group cursor-pointer">
-                <div className="relative">
-                  <img
-                    className="w-full aspect-square rounded-xl object-cover group-hover:scale-105 transition-transform"
-                    alt={playlist.name}
-                    src={playlist.image}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent rounded-xl"></div>
-                  <div className="absolute bottom-4 left-4 right-4">
-                    <p className="text-white font-bold font-headline text-lg mb-1">{playlist.name}</p>
-                    <p className="text-white/80 text-sm">{playlist.description}</p>
-                  </div>
-                  <div className="absolute top-4 right-4 w-12 h-12 rounded-full bg-primary flex items-center justify-center text-on-primary-fixed opacity-0 group-hover:opacity-100 transform translate-y-12 group-hover:translate-y-0 transition-transform">
-                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>
-                      play_arrow
-                    </span>
-                  </div>
+              <div key={playlist.id} className="flex items-center gap-4 bg-surface-container/20 p-3 rounded-2xl border border-white/5 hover:border-primary/50 transition-colors cursor-pointer group">
+                <img src={playlist.coverArt} className="w-20 h-20 rounded-lg object-cover" alt="" />
+                <div className="flex-1 overflow-hidden">
+                  <h4 className="font-bold truncate">{playlist.name}</h4>
+                  <p className="text-xs text-on-surface-variant line-clamp-2">{playlist.description}</p>
                 </div>
+                <button className="opacity-0 group-hover:opacity-100 p-2 text-primary">
+                   <span className="material-symbols-outlined">more_vert</span>
+                </button>
               </div>
             ))}
           </div>
-        )}
-      </section>
-
-          </main>
+        </section>
+      </div>
+    </main>
   );
 };
+
+// Petits composants utilitaires pour le chargement
+const SkeletonCard = () => (
+  <div className="animate-pulse">
+    <div className="aspect-square bg-surface-container rounded-2xl mb-4"></div>
+    <div className="h-4 bg-surface-container rounded w-3/4 mb-2"></div>
+    <div className="h-3 bg-surface-container rounded w-1/2"></div>
+  </div>
+);
+
+const SkeletonLarge = () => (
+  <div className="animate-pulse aspect-[16/10] bg-surface-container rounded-3xl"></div>
+);
 
 export default HomePage;

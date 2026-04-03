@@ -7,6 +7,7 @@ import HomePage from './pages/HomePage';
 import SearchPage from './pages/SearchPage';
 import LibraryPage from './pages/LibraryPage';
 import PlayerPage from './pages/PlayerPage';
+import SettingsPage from './pages/SettingsPage';
 import { PlaylistPage } from './pages/Playlist';
 import { usePlayerStore } from './stores/playerStore';
 
@@ -31,6 +32,7 @@ function App() {
               <Route path="/search" element={<SearchPage />} />
               <Route path="/library" element={<LibraryPage />} />
               <Route path="/player" element={<PlayerPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
               <Route path="/playlist/:id" element={<PlaylistPage />} />
             </Routes>
           </div>

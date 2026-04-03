@@ -56,7 +56,10 @@ const TopNavBar: React.FC<TopNavBarProps> = ({
         <button className="text-neutral-400 dark:text-on-surface-variant hover:text-white transition-colors">
           <span className="material-symbols-outlined">notifications</span>
         </button>
-        <button className="text-neutral-400 dark:text-on-surface-variant hover:text-white transition-colors">
+        <button 
+          onClick={() => navigate('/settings')}
+          className="text-neutral-400 dark:text-on-surface-variant hover:text-white transition-colors"
+        >
           <span className="material-symbols-outlined">settings</span>
         </button>
         <div className="w-8 h-8 rounded-full overflow-hidden">

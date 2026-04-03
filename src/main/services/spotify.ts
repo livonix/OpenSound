@@ -86,7 +86,7 @@ export class SpotifyService {
       const response = await this.client.get('/search', {
         params: {
           q: query,
-          type: 'track',
+          type: 'track,artist',
           limit,
           offset,
         },
@@ -295,11 +295,42 @@ export class SpotifyService {
       }
     ];
 
+    const demoArtists: Artist[] = [
+      {
+        id: 'demo-artist-1',
+        name: 'Demo Artist',
+        images: [
+          { url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzFFRDc2MCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZmlsbD0id2hpdGUiIGZvbnQtZmFtaWx5PSJBcmlhbCI+REM8L3RleHQ+PC9zdmc+', height: 300, width: 300 }
+        ],
+        external_urls: { spotify: '#' },
+        followers: 1000000,
+        genres: ['Pop', 'Electronic'],
+        popularity: 85
+      },
+      {
+        id: 'demo-artist-2',
+        name: 'Another Artist',
+        images: [
+          { url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI0ZGNkI2QiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSIgZmlsbD0id2hpdGUiIGZvbnQtZmFtaWx5PSJBcmlhbCI+QU88L3RleHQ+PC9zdmc+', height: 300, width: 300 }
+        ],
+        external_urls: { spotify: '#' },
+        followers: 500000,
+        genres: ['Rock', 'Indie'],
+        popularity: 75
+      }
+    ];
+
     return {
       tracks: {
         items: demoTracks.slice(0, limit),
         total: demoTracks.length,
         limit: limit,
+        offset: 0
+      },
+      artists: {
+        items: demoArtists,
+        total: demoArtists.length,
+        limit: 10,
         offset: 0
       }
     };

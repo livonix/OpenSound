@@ -40,7 +40,7 @@
     "@types/node": "latest",
     "@types/uuid": "latest",
     "concurrently": "latest",
-    "electron": "latest",
+    "electron": "^41.1.1",
     "electron-builder": "latest",
     "typescript": "latest",
     "wait-on": "latest"

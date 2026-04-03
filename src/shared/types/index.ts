@@ -51,6 +51,12 @@ export interface SearchResult {
     limit: number;
     offset: number;
   };
+  artists?: {
+    items: Artist[];
+    total: number;
+    limit: number;
+    offset: number;
+  };
 }
 
 export interface YouTubeVideo {

@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Plus, X } from 'lucide-react';
 import { useUserData } from '../hooks/useUserData';
 import { Playlist } from '../../../shared/types';
 
 const LibraryPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('playlists');
-  const { playlists, userPlaylists, isLoading: userDataLoading } = useUserData();
+  const [showCreatePlaylist, setShowCreatePlaylist] = useState(false);
+  const [newPlaylistName, setNewPlaylistName] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+  const { playlists, userPlaylists, isLoading: userDataLoading, createPlaylist } = useUserData();
 
   const tabs = [
     { id: 'playlists', label: 'Playlists' },
@@ -51,8 +55,76 @@ const LibraryPage: React.FC = () => {
     return playlist.tracks?.length || 0;
   };
 
+  const handleCreatePlaylist = async () => {
+    if (!newPlaylistName.trim()) return;
+    
+    setIsCreating(true);
+    try {
+      await createPlaylist(newPlaylistName.trim());
+      setShowCreatePlaylist(false);
+      setNewPlaylistName('');
+    } catch (error) {
+      console.error('Failed to create playlist:', error);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   return (
     <main className="ml-64 pt-24 pb-32 px-10 min-h-screen bg-background">
+      {/* Create Playlist Modal */}
+      {showCreatePlaylist && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-surface-container rounded-2xl p-6 w-full max-w-md border border-outline-variant/20 shadow-2xl">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-bold font-headline text-white">Create Playlist</h3>
+              <button 
+                onClick={() => setShowCreatePlaylist(false)}
+                className="text-on-surface-variant hover:text-white transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="mb-6">
+              <label htmlFor="playlist-name" className="block text-sm font-medium text-on-surface-variant mb-2">
+                Name
+              </label>
+              <input
+                id="playlist-name"
+                type="text"
+                value={newPlaylistName}
+                onChange={(e) => setNewPlaylistName(e.target.value)}
+                placeholder="My Awesome Playlist"
+                className="w-full bg-surface-container-highest border border-outline-variant/30 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newPlaylistName.trim()) {
+                    handleCreatePlaylist();
+                  }
+                }}
+              />
+            </div>
+            
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowCreatePlaylist(false)}
+                className="px-5 py-2.5 rounded-full font-bold text-white hover:bg-surface-container-highest transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreatePlaylist}
+                disabled={!newPlaylistName.trim() || isCreating}
+                className="px-5 py-2.5 rounded-full font-bold bg-primary text-on-primary hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isCreating ? 'Creating...' : 'Create'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Editorial Header Section */}
       <section className="mb-12">
         <div className="flex items-end justify-between mb-8">
@@ -62,6 +134,15 @@ const LibraryPage: React.FC = () => {
               Curated by you • {uniquePlaylists.length} items
             </p>
           </div>
+          {activeTab === 'playlists' && (
+            <button 
+              onClick={() => setShowCreatePlaylist(true)}
+              className="flex items-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-full font-bold hover:bg-primary/90 transition-colors hover:scale-105 active:scale-95"
+            >
+              <Plus size={20} />
+              Create Playlist
+            </button>
+          )}
         </div>
 
         {/* Filters/Tabs */}
