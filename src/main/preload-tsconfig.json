@@ -12,7 +12,8 @@
     "resolveJsonModule": true,
     "allowJs": true,
     "declaration": false,
-    "sourceMap": true
+    "sourceMap": true,
+    "ignoreDeprecations": "6.0"
   },
   "include": ["preload.ts"],
   "exclude": ["node_modules"]

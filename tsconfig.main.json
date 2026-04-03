@@ -16,6 +16,7 @@
     "declaration": false,
     "sourceMap": true,
     "noEmit": false,
+    "ignoreDeprecations": "6.0",
     "paths": {
       "@shared/*": ["./src/shared/*"]
     }
