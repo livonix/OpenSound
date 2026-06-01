@@ -111,12 +111,12 @@ export function setupIpcHandlers(): void {
     return { success: false, error: 'Discord RPC not available' };
   });
 
-  // Spotify API handlers
+  // Search handlers (uses Lavalink/YouTube instead of Spotify)
   ipcMain.handle('spotify:search-tracks', async (_, query: string, limit: number = 20) => {
     try {
-      return await spotifyService.searchTracks(query, limit);
+      return await playbackService.searchTracks(query, limit);
     } catch (error) {
-      console.error('Spotify search error:', error);
+      console.error('Search error:', error);
       throw error;
     }
   });

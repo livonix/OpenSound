@@ -3,7 +3,7 @@ import { StreamService } from './streamer';
 import { DiscordRPCService } from './discordRPC';
 import { YouTubeLavalinkService } from './youtubeLavalinkService';
 import { QueueRecommendationService } from './queueRecommendation';
-import { Track, PlaybackState } from '../../shared/types';
+import { Track, PlaybackState, SearchResult } from '../../shared/types';
 
 export class PlaybackService extends EventEmitter {
   private streamService: StreamService;
@@ -499,5 +499,41 @@ export class PlaybackService extends EventEmitter {
 
   public getDiscordRPC(): DiscordRPCService {
     return this.discordRPC;
+  }
+
+  public async searchTracks(query: string, limit: number = 20): Promise<SearchResult> {
+    try {
+      const tracks = await this.youtubeService.searchTracks(query);
+      const items = tracks.slice(0, limit).map((track: any) => ({
+        id: track.id || '',
+        name: track.name || 'Unknown',
+        artists: track.artists?.map((a: any) => ({
+          id: a.id || a.name || 'unknown',
+          name: a.name || 'Unknown',
+          external_urls: { spotify: '' }
+        })) || [],
+        album: {
+          id: track.id || '',
+          name: track.name || 'Unknown',
+          artists: track.artists?.map((a: any) => ({
+            id: a.id || a.name || 'unknown',
+            name: a.name || 'Unknown',
+            external_urls: { spotify: '' }
+          })) || [],
+          images: track.album?.images || [{ url: '', height: 0, width: 0 }],
+          release_date: new Date().toISOString().split('T')[0],
+          total_tracks: 1,
+          external_urls: { spotify: '' }
+        },
+        duration_ms: track.duration_ms || 0,
+        explicit: false,
+        external_urls: { spotify: '' },
+        uri: track.uri || ''
+      }));
+      return { tracks: { items, total: items.length, limit, offset: 0 } };
+    } catch (error) {
+      console.error('Search via Lavalink failed:', error);
+      return { tracks: { items: [], total: 0, limit, offset: 0 } };
+    }
   }
 }

@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { app } from 'electron';
 import { Playlist, Track } from '../../shared/types';
 
@@ -58,7 +58,7 @@ export class PlaylistService {
 
   public async createPlaylist(name: string, description?: string): Promise<Playlist> {
     const playlist: Playlist = {
-      id: uuidv4(),
+      id: randomUUID(),
       name,
       description,
       tracks: [],
@@ -224,7 +224,7 @@ export class PlaylistService {
     }
 
     const newPlaylist: Playlist = {
-      id: uuidv4(),
+      id: randomUUID(),
       name: newName || `${originalPlaylist.name} (Copy)`,
       description: originalPlaylist.description,
       tracks: [...originalPlaylist.tracks],
@@ -274,7 +274,7 @@ export class PlaylistService {
         const playlistData = JSON.parse(content);
         const playlist: Playlist = {
           ...playlistData,
-          id: uuidv4(), // Generate new ID
+          id: randomUUID(), // Generate new ID
           createdAt: new Date(),
           updatedAt: new Date()
         };
